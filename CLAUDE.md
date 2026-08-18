@@ -25,9 +25,23 @@ This project runs entirely on accounts registered to Jen, not Josh. Do not use a
 
 ## Current status
 
-Phase 0 (foundations) is live: branded placeholder deployed at `https://charge-index.vercel.app`.
+Phase 0 (foundations) is live: `https://charge-index.vercel.app`.
 
-Phase 1 (auth + data model + RLS) schema is live: `supabase/migrations/20260818150105_create_initial_schema.sql` — 7 tables (`profiles`, `tracking_sessions`, `daily_entries`, `daily_notes`, `session_analysis`, `ai_insights`, `purchases`), all RLS-enabled, 15 policies total, verified against the live database. `session_analysis` and `ai_insights` intentionally have no client-facing write policy at all — writes go through the service-role key from server code once those phases are built. Auth itself is live (Supabase's default email/password provider), but the `handle_new_user` profile-creation trigger hasn't had a full live signup-to-profile test yet — hit Supabase's default new-project email rate limit (2–3/hour) mid-verification. It's the standard documented Supabase trigger pattern, so low risk, but worth confirming for real the first time Phase 3's signup UI actually runs.
+Phase 1 (auth + data model + RLS) is live and now **fully verified against the real database**: `supabase/migrations/20260818150105_create_initial_schema.sql` — 7 tables, RLS enabled, 15 policies. The `handle_new_user` trigger, which Phase 1 left untested, was confirmed end-to-end on 2026-08-18: a new auth user gets a `profiles` row with `full_name` carried from `raw_user_meta_data` and `role = 'client'`. Also confirmed live, with test users since deleted: a client cannot insert a session under another `client_id` (42501), cannot read another client's session (0 rows), reads 0 rows from `session_analysis` even for their own session, and cannot write `ai_insights` (42501). The service role can read/write both coach-only tables, which is the path Phases 6-9 will use.
 
-Not started: the Next.js app has no auth UI, no Supabase client wiring, and no pages beyond the Phase 0 placeholder yet. That's Phase 3+.
+Phase 3 (session setup / onboarding) is built and verified locally:
 
+- **Auth** — email/password signup, login, signout (`src/app/auth/actions.ts`), plus `/auth/confirm` for the emailed confirmation link. Email confirmation is ON for this project, so signup lands on a "check your inbox" state rather than straight into the app.
+- **Session refresh and route gating** — `src/proxy.ts` (Next.js 16 renamed `middleware` to `proxy`) calling `src/lib/supabase/proxy.ts`. Signed-out requests to anything outside `/`, `/login`, `/signup`, `/auth` 307 to `/login?next=…`. Every page and Server Action re-checks `getUser()` itself; the proxy is the optimistic layer, not the boundary.
+- **`/setup`** — the welcome screen from Jen's prototype: first name, wake/bedtime, session label, 5-7 days, reminder preference, plus the "before you start" panel. Creates the `tracking_sessions` row. Email is shown read-only from the account rather than typed, since real auth now owns it. Existing in-progress sessions are listed with a resume link so a second session is never created by accident.
+- **`/track/[sessionId]`** — placeholder that renders the session's real generated slots. Phase 4 replaces it with the check-in grid.
+- **`src/lib/charge.ts`** — the five levels, their keywords, and reminder copy, verbatim from the prototype. **`src/lib/slots.ts`** — slot generation, wake/bedtime option lists, hour formatting.
+- **`src/lib/database.types.ts`** — generated from the live schema (`npx supabase gen types typescript --project-id <ref>`). Regenerate after any migration.
+
+**Slot generation differs from the pseudocode in `../Planning/Build Plan.md` Section 3, on purpose.** The Build Plan's `buildSessionSlots()` treats the bedtime hour as inclusive and breaks for bedtimes past midnight. The prototype — which the Build Plan itself names as the reference implementation — excludes the bedtime hour and wraps past midnight. `src/lib/slots.ts` follows the prototype: wake 6am / bed 10pm gives 16 slots, wake 7am / bed 1am gives 18. Both verified live through the real UI.
+
+Not started: Phase 4's check-in grid, and everything after it. Phase 2 (payments) stays deferred until Jen creates the Stripe account.
+
+## Verified how
+
+Local `next build` and `eslint` clean. The RLS and trigger checks above ran against the live database with real auth users, created and deleted within the check. The UI flow was driven in a browser at `localhost:3000`: sign in → `/setup` → submit → `/track/[id]`, with the resulting row inspected in Postgres (`wake_time 07:00:00`, `sleep_time 01:00:00`, `day_count 7`, `reminder_pref hourly`) and the page rendering all 18 expected slots, 7 AM through 12 AM. All test users and rows were deleted afterwards; the database is back to zero profiles and zero sessions.
