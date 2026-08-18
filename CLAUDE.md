@@ -25,5 +25,9 @@ This project runs entirely on accounts registered to Jen, not Josh. Do not use a
 
 ## Current status
 
-Phase 0 (foundations) is live: branded placeholder deployed at `https://charge-index.vercel.app`. Phase 1 (auth + data model + RLS) is next — see the Build Plan for the full phase list and the data model this needs to implement.
+Phase 0 (foundations) is live: branded placeholder deployed at `https://charge-index.vercel.app`.
+
+Phase 1 (auth + data model + RLS) schema is live: `supabase/migrations/20260818150105_create_initial_schema.sql` — 7 tables (`profiles`, `tracking_sessions`, `daily_entries`, `daily_notes`, `session_analysis`, `ai_insights`, `purchases`), all RLS-enabled, 15 policies total, verified against the live database. `session_analysis` and `ai_insights` intentionally have no client-facing write policy at all — writes go through the service-role key from server code once those phases are built. Auth itself is live (Supabase's default email/password provider), but the `handle_new_user` profile-creation trigger hasn't had a full live signup-to-profile test yet — hit Supabase's default new-project email rate limit (2–3/hour) mid-verification. It's the standard documented Supabase trigger pattern, so low risk, but worth confirming for real the first time Phase 3's signup UI actually runs.
+
+Not started: the Next.js app has no auth UI, no Supabase client wiring, and no pages beyond the Phase 0 placeholder yet. That's Phase 3+.
 
