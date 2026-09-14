@@ -1,0 +1,44 @@
+# Keeps the Supabase project from pausing.
+#
+# Free-tier Supabase projects pause after about a week without activity, and
+# a paused project silently breaks signup and login while the Vercel site
+# stays up (found INACTIVE on 2026-09-14 after four idle weeks). This runs a
+# real query every three days — well inside that window.
+#
+# It fails loudly: if the project is already paused or unreachable, the run
+# goes red and GitHub emails the repo owner, rather than the outage going
+# unnoticed. A ping cannot un-pause a project; restoring is a Management API
+# call — see "Supabase free tier pauses the project" in CLAUDE.md.
+#
+# Remove this once the project is on a paid Supabase plan.
+
+name: Supabase keep-alive
+
+on:
+  schedule:
+    - cron: "17 9 */3 * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Query the database through the REST API
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          # Anon key under RLS returns an empty list — still a real query.
+          status=$(curl --silent --output /dev/null --write-out "%{http_code}" \
+            --max-time 30 \
+            --header "apikey: $SUPABASE_ANON_KEY" \
+            --header "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "$SUPABASE_URL/rest/v1/profiles?select=id&limit=1")
+          echo "Supabase responded HTTP $status"
+          if [ "$status" != "200" ]; then
+            echo "::error::Supabase did not respond normally (HTTP $status). The project may be paused — check its status in the Management API."
+            exit 1
+          fi
