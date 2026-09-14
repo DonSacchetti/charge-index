@@ -14,13 +14,12 @@ export default async function SetupPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/setup");
 
-  const [{ data: profile }, { data: openSessions }] = await Promise.all([
+  const [{ data: profile }, { data: sessions }] = await Promise.all([
     supabase.from("profiles").select("full_name").eq("id", user.id).single(),
     supabase
       .from("tracking_sessions")
-      .select("id, label, day_count")
+      .select("id, label, day_count, status")
       .eq("client_id", user.id)
-      .eq("status", "in_progress")
       .order("created_at", { ascending: false }),
   ]);
 
@@ -41,24 +40,28 @@ export default async function SetupPage() {
           wrong answers — it&rsquo;s data, not a grade.
         </p>
 
-        {openSessions && openSessions.length > 0 ? (
+        {sessions && sessions.length > 0 ? (
           <div className="mb-[22px] rounded-[12px] border-[1.5px] border-line bg-white p-4">
             <div className="mb-[9px] text-[10px] font-extrabold tracking-[0.12em] text-muted uppercase">
-              Already in progress
+              Your sessions
             </div>
             <div className="flex flex-col gap-2">
-              {openSessions.map((s) => (
-                <Link
-                  key={s.id}
-                  href={`/track/${s.id}`}
-                  className="flex items-center justify-between gap-3 text-[13.5px] font-bold text-navy underline"
-                >
-                  <span>{s.label ?? "Untitled session"}</span>
-                  <span className="text-[11px] font-semibold text-muted no-underline">
-                    {s.day_count} days
-                  </span>
-                </Link>
-              ))}
+              {sessions.map((s) => {
+                const done = s.status === "completed";
+                return (
+                  <Link
+                    key={s.id}
+                    // Completed sessions go back to their results, not the log.
+                    href={done ? `/track/${s.id}/complete` : `/track/${s.id}`}
+                    className="flex items-center justify-between gap-3 text-[13.5px] font-bold text-navy underline"
+                  >
+                    <span>{s.label ?? "Untitled session"}</span>
+                    <span className="text-[11px] font-semibold text-muted no-underline">
+                      {done ? "Complete" : "In progress"} · {s.day_count} days
+                    </span>
+                  </Link>
+                );
+              })}
             </div>
             <p className="mt-[9px] text-[11.5px] text-muted">
               Starting a new session below won&rsquo;t touch these.

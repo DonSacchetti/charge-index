@@ -9,9 +9,11 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Everything except static assets and image files — the auth cookie
-     * only needs refreshing on real page/route requests.
+     * Everything except Next.js internals (/_next/* — static files, the image
+     * optimizer, dev HMR) and image files. The auth cookie only needs
+     * refreshing on real page and route requests; Server Actions post to page
+     * paths, not /_next, so they still pass through.
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
