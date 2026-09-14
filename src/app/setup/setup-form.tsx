@@ -43,7 +43,18 @@ export function SetupForm({
   const slotCount = buildSessionSlots(wake, sleep).length;
 
   return (
-    <form action={formAction}>
+    <form
+      action={(formData) => {
+        // Stamp the client's own calendar date at submit time — the server
+        // uses it for start_date instead of UTC, and falls back if it's absent.
+        const d = new Date();
+        formData.set(
+          "local_date",
+          `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+        );
+        formAction(formData);
+      }}
+    >
       <input type="hidden" name="wake_hour" value={wake} />
       <input type="hidden" name="sleep_hour" value={sleep} />
       <input type="hidden" name="day_count" value={dayCount} />
@@ -52,10 +63,11 @@ export function SetupForm({
       <SectionLabel>Your details</SectionLabel>
       <div className="mb-[22px] flex flex-col gap-[11px]">
         <div>
-          <FieldLabel>First name</FieldLabel>
+          <FieldLabel htmlFor="setup-name">First name</FieldLabel>
           <input
             type="text"
             name="full_name"
+            id="setup-name"
             defaultValue={defaultName}
             required
             placeholder="e.g. Sarah"
@@ -63,10 +75,11 @@ export function SetupForm({
           />
         </div>
         <div>
-          <FieldLabel>Email</FieldLabel>
+          <FieldLabel htmlFor="setup-email">Email</FieldLabel>
           <input
             type="email"
             value={email}
+            id="setup-email"
             readOnly
             aria-readonly
             className={`${inputClass} bg-[#f3f2ef] text-muted`}
@@ -77,12 +90,12 @@ export function SetupForm({
         </div>
         <div className="flex gap-[10px]">
           <div className="flex-1">
-            <FieldLabel>Wake</FieldLabel>
+            <FieldLabel htmlFor="setup-wake">Wake</FieldLabel>
             <select
               value={wake}
+            id="setup-wake"
               onChange={(e) => setWake(Number(e.target.value))}
               className={selectClass}
-              aria-label="Wake time"
             >
               {WAKE_HOURS.map((h) => (
                 <option key={h} value={h}>
@@ -92,12 +105,12 @@ export function SetupForm({
             </select>
           </div>
           <div className="flex-1">
-            <FieldLabel>Bedtime</FieldLabel>
+            <FieldLabel htmlFor="setup-bedtime">Bedtime</FieldLabel>
             <select
               value={sleep}
+            id="setup-bedtime"
               onChange={(e) => setSleep(Number(e.target.value))}
               className={selectClass}
-              aria-label="Bedtime"
             >
               {SLEEP_HOURS.map((h) => (
                 <option key={h} value={h}>
@@ -113,10 +126,11 @@ export function SetupForm({
             : "That pairing leaves no hours to log — pick a later bedtime."}
         </p>
         <div>
-          <FieldLabel>Session label</FieldLabel>
+          <FieldLabel htmlFor="setup-label">Session label</FieldLabel>
           <input
             type="text"
             name="label"
+            id="setup-label"
             placeholder="e.g. Spring 2026"
             className={inputClass}
           />

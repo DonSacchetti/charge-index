@@ -27,10 +27,11 @@ export function LoginForm({ next, notice }: { next?: string; notice?: string }) 
       <FormError message={state?.error ?? notice} />
 
       <div>
-        <FieldLabel>Email</FieldLabel>
+        <FieldLabel htmlFor="login-email">Email</FieldLabel>
         <input
           type="email"
           name="email"
+            id="login-email"
           autoComplete="email"
           required
           placeholder="you@email.com"
@@ -38,10 +39,11 @@ export function LoginForm({ next, notice }: { next?: string; notice?: string }) 
         />
       </div>
       <div>
-        <FieldLabel>Password</FieldLabel>
+        <FieldLabel htmlFor="login-password">Password</FieldLabel>
         <input
           type="password"
           name="password"
+            id="login-password"
           autoComplete="current-password"
           required
           className={inputClass}

@@ -10,6 +10,8 @@ export type ReminderPref = Database["public"]["Enums"]["reminder_pref"];
 export const SCALE = [
   {
     value: 100,
+    color: "#2f7d52",
+    tint: "#eaf5ef",
     label: "100%",
     short: "Fully Charged",
     state: "Optimal",
@@ -25,6 +27,8 @@ export const SCALE = [
   },
   {
     value: 75,
+    color: "#3a6ec4",
+    tint: "#eaf0fb",
     label: "75%",
     short: "Positively Charged",
     state: "Dynamic",
@@ -40,6 +44,8 @@ export const SCALE = [
   },
   {
     value: 50,
+    color: "#6b7bb8",
+    tint: "#eef1f8",
     label: "50%",
     short: "Steady Charge",
     state: "Composed",
@@ -54,6 +60,8 @@ export const SCALE = [
   },
   {
     value: 25,
+    color: "#d4943a",
+    tint: "#fdf3e4",
     label: "25%",
     short: "Low Charge",
     state: "Drifting",
@@ -62,6 +70,8 @@ export const SCALE = [
   },
   {
     value: 10,
+    color: "#c04545",
+    tint: "#fceaea",
     label: "10%",
     short: "Recharge Needed",
     state: "Depleted",

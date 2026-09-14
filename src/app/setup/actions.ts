@@ -14,6 +14,19 @@ import { createClient } from "@/lib/supabase/server";
 
 export type SetupState = { error: string } | null;
 
+/**
+ * The session's start date as the client sees it. Postgres `current_date` is
+ * UTC, so an evening setup in Toronto would otherwise start "tomorrow". The
+ * browser's date is only trusted within a day of the server's, which covers
+ * every real timezone and nothing else.
+ */
+function startDate(raw: FormDataEntryValue | null): string | undefined {
+  const value = typeof raw === "string" ? raw : "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+  const offsetDays = Math.abs(Date.parse(`${value}T12:00:00Z`) - Date.now()) / 86_400_000;
+  return offsetDays <= 1.5 ? value : undefined;
+}
+
 const VALID_REMINDERS = new Set<string>(REMINDERS.map((r) => r.value));
 
 export async function createSession(
@@ -65,6 +78,7 @@ export async function createSession(
       sleep_time: toTimeValue(sleep),
       day_count: dayCount,
       reminder_pref: reminder as ReminderPref,
+      start_date: startDate(formData.get("local_date")),
     })
     .select("id")
     .single();

@@ -25,10 +25,11 @@ export function SignupForm() {
       <FormError message={state?.error} />
 
       <div>
-        <FieldLabel>First name</FieldLabel>
+        <FieldLabel htmlFor="signup-name">First name</FieldLabel>
         <input
           type="text"
           name="full_name"
+            id="signup-name"
           autoComplete="given-name"
           required
           placeholder="e.g. Sarah"
@@ -36,10 +37,11 @@ export function SignupForm() {
         />
       </div>
       <div>
-        <FieldLabel>Email</FieldLabel>
+        <FieldLabel htmlFor="signup-email">Email</FieldLabel>
         <input
           type="email"
           name="email"
+            id="signup-email"
           autoComplete="email"
           required
           placeholder="you@email.com"
@@ -47,10 +49,11 @@ export function SignupForm() {
         />
       </div>
       <div>
-        <FieldLabel>Password</FieldLabel>
+        <FieldLabel htmlFor="signup-password">Password</FieldLabel>
         <input
           type="password"
           name="password"
+            id="signup-password"
           autoComplete="new-password"
           required
           minLength={8}

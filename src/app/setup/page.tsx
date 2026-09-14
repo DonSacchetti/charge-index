@@ -25,7 +25,7 @@ export default async function SetupPage() {
   ]);
 
   return (
-    <AppShell subtitle="Getting set up" badge="5–7 days" progress={{ total: 7, filled: 1 }}>
+    <AppShell subtitle="Getting set up" badge="5–7 days" progress={{ total: 7, current: 0 }}>
       <div className="px-5 pt-6 pb-9">
         <h1 className="font-serif text-[31px] leading-[1.14] font-semibold tracking-[-0.01em] text-navy">
           How charged

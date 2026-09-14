@@ -24,7 +24,7 @@ export default async function LoginPage({
     typeof params.error === "string" ? NOTICES[params.error] : undefined;
 
   return (
-    <AppShell subtitle="Welcome back" progress={{ total: 7, filled: 1 }}>
+    <AppShell subtitle="Welcome back" progress={{ total: 7, current: 0 }}>
       <div className="px-5 pt-6 pb-9">
         <h1 className="font-serif text-[31px] leading-[1.14] font-semibold tracking-[-0.01em] text-navy">
           Pick up where

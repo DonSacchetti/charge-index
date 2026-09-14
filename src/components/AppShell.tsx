@@ -6,16 +6,17 @@ type Props = {
   /** Pill on the right of the header — "5–7 days", "Day 2 of 5". */
   badge?: string;
   /**
-   * Progress rail under the header: total segments and how many are filled.
-   * Matches the seven-segment rail in Jen's mockups.
+   * Progress rail under the header, as in the prototype: segments before
+   * `current` read as done, `current` is gold, the rest are faint. The
+   * prototype uses day_count + 2 segments — setup, one per day, results.
    */
-  progress?: { total: number; filled: number };
+  progress?: { total: number; current: number };
   children: ReactNode;
 };
 
 export function AppShell({ subtitle, badge, progress, children }: Props) {
   const segments = progress?.total ?? 7;
-  const filled = progress?.filled ?? 1;
+  const current = progress?.current ?? 0;
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-1 flex-col bg-white shadow-[0_0_60px_rgba(19,36,73,0.08)] sm:my-8 sm:min-h-0 sm:rounded-3xl sm:overflow-hidden">
@@ -39,7 +40,9 @@ export function AppShell({ subtitle, badge, progress, children }: Props) {
           {Array.from({ length: segments }, (_, i) => (
             <div
               key={i}
-              className={`h-[3px] flex-1 rounded-sm ${i < filled ? "bg-gold" : "bg-white/15"}`}
+              className={`h-[3px] flex-1 rounded-sm ${
+                i < current ? "bg-white/50" : i === current ? "bg-gold" : "bg-white/13"
+              }`}
             />
           ))}
         </div>
@@ -50,9 +53,18 @@ export function AppShell({ subtitle, badge, progress, children }: Props) {
   );
 }
 
-export function FieldLabel({ children }: { children: ReactNode }) {
+export function FieldLabel({
+  htmlFor,
+  children,
+}: {
+  /** Id of the field this labels — required so screen readers announce it. */
+  htmlFor: string;
+  children: ReactNode;
+}) {
   return (
-    <label className="mb-[5px] block text-[10.5px] font-extrabold tracking-[0.07em] text-navy uppercase">
+    <label
+      htmlFor={htmlFor}
+      className="mb-[5px] block text-[10.5px] font-extrabold tracking-[0.07em] text-navy uppercase">
       {children}
     </label>
   );
