@@ -2,9 +2,10 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { AppShell } from "@/components/AppShell";
-import { buildSessionSlots, formatHour, hourOf } from "@/lib/slots";
+import { loadSessionAnalysis } from "@/lib/session-data";
+import { formatHour } from "@/lib/slots";
 import { createClient } from "@/lib/supabase/server";
-import { computeWeeklyMap, findWindows, formatWindow } from "@/lib/weekly-map";
+import { formatWindow } from "@/lib/weekly-map";
 
 /** Jen's booking link for the $249 session, as used in her prototype. */
 const BOOK_SESSION_URL = "https://calendly.com/soenenstrategies/introtimestrategycall";
@@ -13,8 +14,8 @@ const BOOK_SESSION_URL = "https://calendly.com/soenenstrategies/introtimestrateg
  * End-of-session results, built to mockups 07–10. Per Josh (2026-09-14) the
  * client sees their peak window here. That's the one piece of analysis on the
  * client side: it's computed from the client's own entries, which RLS already
- * lets them read. Everything deeper — the curve, the other windows, ideal day,
- * AI insights — stays coach-only.
+ * lets them read. Only `windows.peak` is rendered — the curve, the other
+ * windows, ideal day and AI insights stay on the coach side.
  */
 export default async function CompletePage({
   params,
@@ -27,39 +28,20 @@ export default async function CompletePage({
   } = await supabase.auth.getUser();
   if (!user) redirect(`/login?next=/track/${sessionId}/complete`);
 
-  const [{ data: session }, { data: entries }, { data: profile }] = await Promise.all([
-    supabase
-      .from("tracking_sessions")
-      .select("id, label, wake_time, sleep_time, day_count, status")
-      .eq("id", sessionId)
-      .maybeSingle(),
-    supabase
-      .from("daily_entries")
-      .select("day_number, slot_hour, energy_pct")
-      .eq("session_id", sessionId),
+  const [data, { data: profile }] = await Promise.all([
+    loadSessionAnalysis(supabase, sessionId),
     supabase.from("profiles").select("full_name").eq("id", user.id).single(),
   ]);
 
-  if (!session) notFound();
+  if (!data) notFound();
+  const { session, wake, sleep, entries, windows } = data;
   if (session.status !== "completed") redirect(`/track/${sessionId}`);
-
-  const wake = hourOf(session.wake_time);
-  const sleep = hourOf(session.sleep_time);
-  const hours = buildSessionSlots(wake, sleep).map(hourOf);
-  const map = computeWeeklyMap(
-    (entries ?? []).map((e) => ({
-      dayNumber: e.day_number,
-      hour: hourOf(e.slot_hour),
-      pct: e.energy_pct,
-    })),
-    hours,
-  );
-  const { peak } = findWindows(map);
+  const peak = windows.peak;
 
   const stats = [
     { label: "Session", value: session.label ?? "—" },
     { label: "Days tracked", value: `${session.day_count} days` },
-    { label: "Hours logged", value: String(entries?.length ?? 0) },
+    { label: "Hours logged", value: String(entries.length) },
     { label: "Waking window", value: `${formatHour(wake)} – ${formatHour(sleep)}` },
     { label: "Peak window found", value: formatWindow(peak) },
   ];
