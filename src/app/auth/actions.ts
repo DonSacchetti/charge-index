@@ -12,7 +12,8 @@ function safeNext(next: FormDataEntryValue | null): string {
   // Only ever redirect to a path on this app — never to an absolute URL
   // supplied through the query string.
   const value = typeof next === "string" ? next : "";
-  return value.startsWith("/") && !value.startsWith("//") ? value : "/setup";
+  // Default to "/", which sends coaches to /coach and clients to /setup.
+  return value.startsWith("/") && !value.startsWith("//") ? value : "/";
 }
 
 export async function signUp(_prev: AuthState, formData: FormData): Promise<AuthState> {

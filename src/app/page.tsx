@@ -9,7 +9,14 @@ export default async function Home() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (user) redirect("/setup");
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    redirect(profile?.role === "coach" || profile?.role === "admin" ? "/coach" : "/setup");
+  }
 
   return (
     <div className="flex flex-1 flex-col">

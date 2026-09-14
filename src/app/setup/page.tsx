@@ -15,7 +15,7 @@ export default async function SetupPage() {
   if (!user) redirect("/login?next=/setup");
 
   const [{ data: profile }, { data: sessions }] = await Promise.all([
-    supabase.from("profiles").select("full_name").eq("id", user.id).single(),
+    supabase.from("profiles").select("full_name, role").eq("id", user.id).single(),
     supabase
       .from("tracking_sessions")
       .select("id, label, day_count, status")
@@ -73,6 +73,14 @@ export default async function SetupPage() {
           defaultName={profile?.full_name ?? ""}
           email={user.email ?? ""}
         />
+
+        {profile?.role === "coach" || profile?.role === "admin" ? (
+          <p className="mt-5 text-center">
+            <Link href="/coach" className="text-[12px] font-bold text-navy underline">
+              Go to coach view
+            </Link>
+          </p>
+        ) : null}
 
         <form action={signOut} className="mt-5 text-center">
           <button

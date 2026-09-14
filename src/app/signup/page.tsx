@@ -10,7 +10,7 @@ export default async function SignupPage({ searchParams }: PageProps<"/signup">)
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (user) redirect("/setup");
+  if (user) redirect("/");
 
   const params = await searchParams;
   const checkEmail = typeof params.check === "string" ? params.check : null;

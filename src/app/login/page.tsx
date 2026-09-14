@@ -16,7 +16,7 @@ export default async function LoginPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (user) redirect("/setup");
+  if (user) redirect("/");
 
   const params = await searchParams;
   const next = typeof params.next === "string" ? params.next : undefined;
