@@ -40,7 +40,7 @@ Phase 3 (session setup / onboarding) is built and verified locally:
 
 **Slot generation differs from the pseudocode in `../Planning/Build Plan.md` Section 3, on purpose.** The Build Plan's `buildSessionSlots()` treats the bedtime hour as inclusive and breaks for bedtimes past midnight. The prototype — which the Build Plan itself names as the reference implementation — excludes the bedtime hour and wraps past midnight. `src/lib/slots.ts` follows the prototype: wake 6am / bed 10pm gives 16 slots, wake 7am / bed 1am gives 18. Both verified live through the real UI.
 
-Phase 4 (daily check-in grid) and Phase 5 (weekly map engine + client results) are built, verified and **live in production** since 2026-09-14. Phase 2 (payments) stays deferred until Jen creates the Stripe account. Next: Phase 6, the coach view.
+Phases 4 (daily check-in grid), 5 (weekly map engine + client results) and 6 (coach view) are built, verified and **live in production** since 2026-09-14. Next: Phase 7 (ideal day, streaks, session comparison). Phase 2 (payments) stays deferred until Jen creates the Stripe account.
 
 Phase 4 (daily check-in grid), built 2026-09-14 to Jen's prototype and mockups 03–06:
 
@@ -60,7 +60,29 @@ Phase 5 (weekly map engine + client results), built 2026-09-14:
 - **`/setup`** lists all of a client's sessions; completed ones link to their results.
 - **`src/proxy.ts`** matcher skips all `/_next/*` internals.
 
+Phase 6 (coach view), built 2026-09-14:
+
+- **`/coach`** — every session: client, label, start date, waking hours, hours logged, status. A plain entry point; the full roster (grouping by client, coach notes, bulk export) is Phase 10. Hours are counted in the database with `daily_entries(count)` — fetching rows to count would hit the API's 1,000-row default.
+- **`/coach/sessions/[sessionId]`** — the prototype's analysis layer: header, the three window cards (Fully Charged / Dynamic / Recovery, Jen's copy), the charge curve, and client reflections. Ideal day and the zone cards are Phase 7, AI insights Phase 9; the burnout gauge is out of scope.
+- **`src/components/ChargeCurve.tsx`** — server-rendered SVG, no chart library. Zone shading at the five tiers (split halfway between them, matching `nearestTier()`); filled dot = answered every day; hollow ring with `n=` = answered on only some days; the line breaks at an hour nobody answered rather than drawing through it; window markers under the axis; legend, per-point tooltips, and a "View the numbers" table.
+- **`src/lib/viewer.ts`** — `requireViewer()` / `requireCoach()`. Coach pages 404 for anyone without `role = 'coach'` or `'admin'`, including a client looking at their own session. RLS remains the boundary underneath.
+- **`src/lib/session-data.ts`** — `loadSessionAnalysis()`, shared by the client results screen (which renders only `windows.peak`) and the coach view.
+- **Role routing:** `/`, sign-in and email confirmation send coaches to `/coach` and clients to `/setup`.
+
+**Making someone a coach.** Signup always creates a client — `handle_new_user` never reads a role from signup metadata, and clients can't change their own role (see Security). Jen should sign up at `/signup` with her own email and password (don't create her account for her), then promote her through the Management API's SQL endpoint with `SUPABASE_ACCESS_TOKEN`:
+
+```sql
+update public.profiles set role = 'coach'
+where id = (select id from auth.users where email = '<jen''s email>');
+```
+
 ## Security
+
+**Privilege escalation, found and fixed 2026-09-14** (`supabase/migrations/20260914203306_restrict_profile_updates.sql`). Supabase grants `anon` and `authenticated` write access to every column, leaving RLS as the only gate, and Phase 1's `profiles_update_own` didn't restrict columns. So any signed-up client could `update profiles set role = 'coach'` on their own row — which opened every client's sessions, entries, notes and profiles, plus the coach-only tables — and could set their own `stripe_customer_id`. Proven live with test users before the fix (a test client promoted itself and read another client's "For Jen" note). No real accounts existed, so no data was exposed. Fix: column-level privileges — clients may update `profiles.full_name` and nothing else. Phase 1's verification had tested clients reading each other but never a client changing their own role.
+
+**`scripts/verify-rls.mjs`** — live check of the whole access matrix with throwaway users: self-promotion, client isolation, coach-only and paid tables, and the coach role (27 checks). It creates and deletes real users on the live project. **Run it after any migration or policy change:** `node --env-file=.env.local scripts/verify-rls.mjs`.
+
+**Applying migrations:** the MCP connection hasn't worked in recent sessions, so migrations were applied through the Management API's SQL endpoint, together with their `supabase_migrations.schema_migrations` row in the same transaction, keeping history consistent with the first migration.
 
 Next.js was patched 16.3.1 → 16.3.5 on 2026-09-14 for two critical unauthenticated RCE advisories published after scaffolding (GHSA-2xp9-vwfh-vxw4 in the image optimizer's AVIF handling; GHSA-p293-qw3h-jr36 on Windows hosts), plus sharp and js-yaml advisories. Production wasn't exposed to the image one — no `remotePatterns`, so the optimizer rejects remote URLs (confirmed 400 live), no AVIF in `public/`, no `next/image` — and the Windows one doesn't apply on Vercel. Production has run 16.3.5 since the 2026-09-14 deploy (checked with `window.next.version` on the live site). Run `npm audit` at the start of each session; it was clean in August and not in September.
 
@@ -71,6 +93,8 @@ Free-tier projects pause after about a week without activity. This one was found
 **Keep-alive:** `.github/workflows/supabase-keepalive.yml` queries the database through the REST API every three days (repo secrets `SUPABASE_URL`, `SUPABASE_ANON_KEY`). If the project is already paused the run fails and GitHub emails the repo owner — a ping can't un-pause it. Manual run: `gh workflow run supabase-keepalive.yml`. Remove it if the project moves to a paid Supabase plan.
 
 ## Verified how
+
+**Phase 6:** `tsc`, `eslint`, `next build`, `npm audit` clean; 16/16 unit tests; `scripts/verify-rls.mjs` 27/27. Seeded a coach, a completed client built from Jen's prototype demo data and reflections (some hours skipped on some days, 9 PM skipped every day), and a sparse in-progress client with a 1 AM bedtime. Locally and then on production: the coach landed on `/coach` with both clients and correct hour counts; the completed session showed windows 9 AM – 12 PM / 3–5 PM / 6–9 PM (matching the Phase 5 Postgres parity check), 12 filled dots and 3 hollow `n=4` rings on exactly the partially skipped hours, a gap at 9 PM, and the reflections. The sparse session showed recovery 11 PM – 1 AM joined across midnight and "—" for the empty windows. Signed in as the client: landed on `/setup`, no coach link, all coach URLs 404 with no analysis or reflection text in the response, while their results screen still showed only the peak window. Test accounts deleted.
 
 **Production, 2026-09-14:** deployment `charge-index-m4agk4brm` went `READY`; the live site reports Next.js 16.3.5 and serves the Phase 4 label fix. End-to-end on `charge-index.vercel.app` with a throwaway account: sign in, `/setup`, tap 9 AM 100%, 10 AM 100%, 11 AM 75%, finish from Day 5. The results screen showed "Peak window found 9 AM – 11 AM" and 3 hours; the live database held exactly those three entries and `status = completed`. Account deleted; database back to zero.
 
