@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Charge Index™ · The Peak Plan™
 
-## Getting Started
+A web app for **Soenen Strategies** (Jen Soenen, Time Strategist). Clients log their energy through their waking hours for five to seven days — the **Charge Index™** — and get their peak windows back. Jen reviews every client's pattern in a coach view and turns it into **The Peak Plan™**: a one-page schedule and a calendar file.
 
-First, run the development server:
+Live at **https://charge-index.vercel.app**.
+
+## What's in it
+
+**For clients** — sign up, set wake time, bedtime and session length, then one tap per hour on a five-level scale (100% Fully Charged → 10% Recharge Needed), with a daily reflection. At the end: their peak window, and the Peak Plan once purchased.
+
+**For Jen** — a roster of every client; per-session analysis (charge curve, peak / collaboration / recovery windows, ideal day, consistency, comparison across a client's sessions); AI-drafted insights; private notes; CSV and ZIP exports.
+
+## Stack
+
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · Supabase (Postgres, Auth, row-level security) · Vercel · Claude API (AI insights) · Vitest.
+
+## Running it locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Needs a `.env.local` with:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable | Used for |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser/server client — row-level security applies |
+| `SUPABASE_SERVICE_ROLE_KEY` | Only the scheduled reminder run and the verification scripts |
+| `ANTHROPIC_API_KEY` | AI insight drafts (optional — the feature switches off without it) |
+| `CRON_SECRET` | Authenticates the scheduled reminder run (optional) |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Credentials are never committed — this repository is public.
 
-## Learn More
+## Commands
 
-To learn more about Next.js, take a look at the following resources:
+| Command | What it does |
+|---|---|
+| `npm run dev` | Local development server |
+| `npm run build` | Production build |
+| `npm test` | Unit tests (Vitest) |
+| `npm run lint` | ESLint |
+| `node --env-file=.env.local scripts/verify-rls.mjs` | Live check of the database access rules |
+| `node --env-file=.env.local scripts/verify-access.mjs [url]` | Live check of who can open which page and download |
+| `node --env-file=<control-plane env> scripts/apply-migration.mjs <file>` | Apply a migration to the live database |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The two `verify-*` scripts create throwaway users in the real project and delete them afterwards. Run them after any change to access rules, routes or migrations.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Where things are
 
-## Deploy on Vercel
+- `src/app` — routes: client flow (`/setup`, `/track`, `/plan`), coach area (`/coach`), auth, exports, the reminder endpoint
+- `src/lib` — the analysis engine (`weekly-map.ts`, `coach-analysis.ts`), Peak Plan and export builders, reminders, AI insights, Supabase clients
+- `supabase/migrations` — the schema and every access rule, in order
+- `CLAUDE.md` — detailed build notes, decisions and verification history
+- `HANDOFF.md` — the runbook for handing the project over to Jen
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+© Soenen Strategies. All rights reserved.
