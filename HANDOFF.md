@@ -17,17 +17,18 @@ Josh created these under your email address so everything was yours from day one
 
 Stripe is different: you create that account yourself (step 7).
 
-## 2. Make yourself the coach
+## 2. Make yourself the admin
 
-Signing up only ever creates a client account — nobody can make themselves a coach from the website.
+Signing up only ever creates a client account — nobody can give themselves more access from the website.
 
 1. Go to **https://charge-index.vercel.app/signup** and create your account with your own email and password.
-2. **(developer)** Promote it to coach with one statement in Supabase's SQL editor:
+2. **(developer)** Promote it to admin with one statement in Supabase's SQL editor:
    ```sql
-   update public.profiles set role = 'coach'
+   update public.profiles set role = 'admin'
    where id = (select id from auth.users where email = 'YOUR EMAIL HERE');
    ```
-3. Sign in again. You'll land on your client roster at `/coach`.
+3. Sign in again. You'll land on your client roster at `/coach` — every client, their sessions, daily logs, analysis, notes and exports. "Client view" in the header takes you to the screens your clients use.
+4. **(developer)** Remove the build's test accounts, including Josh's (see step 10).
 
 ## 3. Set up your own Claude Code
 
@@ -109,4 +110,4 @@ To serve the app from `app.soenenstrategies.com`:
    node --env-file=.env.local scripts/verify-rls.mjs
    node --env-file=.env.local scripts/verify-access.mjs https://charge-index.vercel.app
    ```
-4. Delete the test client.
+4. Delete the test client, and Josh's build-time account (it holds admin access and a test Peak Plan purchase with no payment).
