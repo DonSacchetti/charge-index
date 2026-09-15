@@ -43,21 +43,30 @@ export type Database = {
         Row: {
           energy_type: string | null
           generated_at: string
+          input_tokens: number | null
           insights: Json | null
+          model: string | null
+          output_tokens: number | null
           recommendations: Json | null
           session_id: string
         }
         Insert: {
           energy_type?: string | null
           generated_at?: string
+          input_tokens?: number | null
           insights?: Json | null
+          model?: string | null
+          output_tokens?: number | null
           recommendations?: Json | null
           session_id: string
         }
         Update: {
           energy_type?: string | null
           generated_at?: string
+          input_tokens?: number | null
           insights?: Json | null
+          model?: string | null
+          output_tokens?: number | null
           recommendations?: Json | null
           session_id?: string
         }

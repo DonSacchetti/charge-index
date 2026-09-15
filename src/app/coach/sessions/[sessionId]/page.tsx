@@ -6,9 +6,11 @@ import { Card, CoachShell } from "@/components/CoachShell";
 import { type CompareSeries, CompareCurve } from "@/components/coach/CompareCurve";
 import { ConsistencyCard } from "@/components/coach/ConsistencyCard";
 import { IdealDayCard } from "@/components/coach/IdealDayCard";
+import { InsightsCard } from "@/components/coach/InsightsCard";
 import { ZoneCards } from "@/components/coach/ZoneCards";
 import { consistency, idealDay, zoneTopHours } from "@/lib/coach-analysis";
 import { alignToAxis, compareAxis } from "@/lib/compare";
+import { insightsConfigured } from "@/lib/insights-client";
 import { PLAN_WINDOWS } from "@/lib/peak-plan";
 import { loadSessionAnalysis } from "@/lib/session-data";
 import { formatHour } from "@/lib/slots";
@@ -26,6 +28,13 @@ export default async function CoachSessionPage({
 
   const { session, clientName, wake, sleep, hours, map, windows, entries, reflections } = data;
   const hasData = entries.length > 0;
+
+  const { data: savedInsights } = await supabase
+    .from("ai_insights")
+    .select("energy_type, insights, recommendations, generated_at, model")
+    .eq("session_id", session.id)
+    .maybeSingle();
+  const asStrings = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
 
   // Pattern comparison: this session plus up to three of the client's most
   // recent others, shown oldest first.
@@ -126,6 +135,25 @@ export default async function CoachSessionPage({
         </p>
         <ChargeCurve map={map} windows={windows} dayCount={session.day_count} />
       </Card>
+
+      <div className="mb-5">
+        <InsightsCard
+          sessionId={session.id}
+          configured={insightsConfigured()}
+          hasData={hasData}
+          saved={
+            savedInsights
+              ? {
+                  energyType: savedInsights.energy_type,
+                  insights: asStrings(savedInsights.insights),
+                  recommendations: asStrings(savedInsights.recommendations),
+                  generatedAt: savedInsights.generated_at,
+                  model: savedInsights.model,
+                }
+              : null
+          }
+        />
+      </div>
 
       <div className="mb-5 grid gap-5 lg:grid-cols-2">
         <ConsistencyCard data={consistency(entries, hours, session.day_count)} hoursPerDay={hours.length} />

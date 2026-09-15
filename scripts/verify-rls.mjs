@@ -120,6 +120,8 @@ try {
   expect((await count(coach.db, "session_analysis", "session_id", aliceSession)) === 1, "coach reads session_analysis");
   expect((await count(coach.db, "ai_insights", "session_id", aliceSession)) === 1, "coach reads ai_insights");
   expect((await coach.db.from("profiles").select("id").in("id", [alice.id, bob.id])).data?.length === 2, "coach reads client profiles");
+  expect(!(await coach.db.from("ai_insights").update({ energy_type: "coach draft" }).eq("session_id", aliceSession)).error, "coach can write AI insight drafts");
+  expect(denied(await alice.db.from("ai_insights").update({ energy_type: "forged" }).eq("session_id", aliceSession)) || (await admin.from("ai_insights").select("energy_type").eq("session_id", aliceSession).single()).data?.energy_type === "coach draft", "client still cannot change AI insights");
   expect(denied(await coach.db.from("daily_entries").insert({ session_id: aliceSession, day_number: 3, slot_hour: "11:00", energy_pct: 50 })), "coach cannot write a client's entries");
   expect(denied(await coach.db.from("profiles").update({ role: "admin" }).eq("id", coach.id)), "coach cannot change roles either");
 } catch (error) {
