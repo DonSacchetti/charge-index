@@ -52,7 +52,7 @@ async function makeUser(tag, role = "client") {
   const client = createClient(URL, ANON, { auth: { persistSession: false } });
   const { error: signInError } = await client.auth.signInWithPassword({ email, password });
   if (signInError) throw new Error(`signIn ${tag}: ${signInError.message}`);
-  return { id: data.user.id, db: client };
+  return { id: data.user.id, email, db: client };
 }
 
 async function seedSession(user) {
@@ -87,6 +87,13 @@ try {
   expect(denied(await alice.db.from("profiles").update({ role: "admin", full_name: "x" }).eq("id", alice.id)), "client cannot smuggle role alongside a name change");
   expect(denied(await alice.db.from("profiles").update({ stripe_customer_id: "cus_forged" }).eq("id", alice.id)), "client cannot set own stripe_customer_id");
   expect(!(await alice.db.from("profiles").update({ full_name: "alice" }).eq("id", alice.id)).error, "client can still change own name");
+  const { data: withEmail } = await admin.from("profiles").select("email").eq("id", alice.id).single();
+  expect(withEmail?.email === alice.email, "signup trigger copies the account email onto the profile");
+  expect(denied(await alice.db.from("profiles").update({ email: "spoofed@example.com" }).eq("id", alice.id)), "client cannot overwrite the email on their profile");
+  const changedEmail = `rls-check-changed-${stamp}@example.com`;
+  await admin.auth.admin.updateUserById(alice.id, { email: changedEmail, email_confirm: true });
+  const { data: afterChange } = await admin.from("profiles").select("email").eq("id", alice.id).single();
+  expect(afterChange?.email === changedEmail, "changing the account email updates the profile");
   expect((await bob.db.from("profiles").select("id")).data?.length === 1, "client sees only their own profile");
 
   console.log("\nClient ↔ client");
