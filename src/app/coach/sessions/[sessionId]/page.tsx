@@ -9,35 +9,11 @@ import { IdealDayCard } from "@/components/coach/IdealDayCard";
 import { ZoneCards } from "@/components/coach/ZoneCards";
 import { consistency, idealDay, zoneTopHours } from "@/lib/coach-analysis";
 import { alignToAxis, compareAxis } from "@/lib/compare";
+import { PLAN_WINDOWS } from "@/lib/peak-plan";
 import { loadSessionAnalysis } from "@/lib/session-data";
 import { formatHour } from "@/lib/slots";
 import { requireCoach } from "@/lib/viewer";
 import { formatWindow } from "@/lib/weekly-map";
-
-/** Window cards — labels and descriptions verbatim from Jen's prototype. */
-const WINDOW_CARDS = [
-  {
-    band: "peak",
-    label: "Fully Charged",
-    color: "#2f7d52",
-    tint: "#eaf5ef",
-    desc: "Guard it like Fort Knox. One hour here is worth two or three anywhere else.",
-  },
-  {
-    band: "collaboration",
-    label: "Dynamic",
-    color: "#3a6ec4",
-    tint: "#eaf0fb",
-    desc: "Meetings, stakeholder work, anything that needs you communicating well.",
-  },
-  {
-    band: "recovery",
-    label: "Recovery",
-    color: "#c04545",
-    tint: "#fceaea",
-    desc: "Stop fighting this dip. Schedule the recharge instead of pushing through it.",
-  },
-] as const;
 
 export default async function CoachSessionPage({
   params,
@@ -97,17 +73,33 @@ export default async function CoachSessionPage({
               : "Nothing logged yet. The analysis fills in as the client logs their hours."}
           </p>
         </div>
-        <div className="text-right text-[12px] leading-[1.7] text-white/70">
-          <div>Started {session.start_date}</div>
-          <div>
-            Waking {formatHour(wake)} – {formatHour(sleep)}
+        <div className="flex flex-col items-end gap-3">
+          <div className="text-right text-[12px] leading-[1.7] text-white/70">
+            <div>Started {session.start_date}</div>
+            <div>
+              Waking {formatHour(wake)} – {formatHour(sleep)}
+            </div>
+            <div>{session.status === "completed" ? "Complete" : "In progress"}</div>
           </div>
-          <div>{session.status === "completed" ? "Complete" : "In progress"}</div>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Link
+              href={`/plan/${session.id}`}
+              className="rounded-[10px] border-[1.5px] border-white/30 bg-white/10 px-4 py-[10px] text-[12.5px] font-extrabold text-white hover:bg-white/20"
+            >
+              Peak Plan
+            </Link>
+            <a
+              href={`/coach/sessions/${session.id}/export.csv`}
+              className="rounded-[10px] bg-gold px-4 py-[11px] text-[12.5px] font-extrabold text-white hover:bg-gold-deep"
+            >
+              Export CSV
+            </a>
+          </div>
         </div>
       </div>
 
       <div className="mb-5 grid gap-4 md:grid-cols-3">
-        {WINDOW_CARDS.map((w) => (
+        {PLAN_WINDOWS.map((w) => (
           <div
             key={w.band}
             className="rounded-[14px] border-[1.5px] p-5"

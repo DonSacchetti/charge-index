@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { loadSessionAnalysis } from "@/lib/session-data";
 import { formatHour } from "@/lib/slots";
-import { createClient } from "@/lib/supabase/server";
+import { canViewPeakPlan, requireViewer } from "@/lib/viewer";
 import { formatWindow } from "@/lib/weekly-map";
 
 /** Jen's booking link for the $249 session, as used in her prototype. */
@@ -22,11 +22,8 @@ export default async function CompletePage({
 }: PageProps<"/track/[sessionId]/complete">) {
   const { sessionId } = await params;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/login?next=/track/${sessionId}/complete`);
+  const viewer = await requireViewer(`/track/${sessionId}/complete`);
+  const { supabase, user } = viewer;
 
   const [data, { data: profile }] = await Promise.all([
     loadSessionAnalysis(supabase, sessionId),
@@ -37,6 +34,7 @@ export default async function CompletePage({
   const { session, wake, sleep, entries, windows } = data;
   if (session.status !== "completed") redirect(`/track/${sessionId}`);
   const peak = windows.peak;
+  const hasPlan = await canViewPeakPlan(viewer, session);
 
   const stats = [
     { label: "Session", value: session.label ?? "—" },
@@ -96,15 +94,26 @@ export default async function CompletePage({
                 by charge level, your protected peak windows, a calendar file and
                 a one-page PDF.
               </p>
-              {/* Checkout arrives with Phase 2, once Jen's Stripe account exists. */}
-              <button
-                type="button"
-                disabled
-                className="inline-block cursor-not-allowed rounded-[10px] bg-gold px-[18px] py-[11px] text-[13px] font-extrabold text-white opacity-60"
-              >
-                Unlock my plan
-              </button>
-              <span className="ml-3 text-[11px] font-semibold text-white/60">Coming soon</span>
+              {hasPlan ? (
+                <Link
+                  href={`/plan/${sessionId}`}
+                  className="inline-block rounded-[10px] bg-gold px-[18px] py-[11px] text-[13px] font-extrabold text-white hover:bg-gold-deep"
+                >
+                  View my Peak Plan
+                </Link>
+              ) : (
+                <>
+                  {/* Checkout arrives with Phase 2, once Jen's Stripe account exists. */}
+                  <button
+                    type="button"
+                    disabled
+                    className="inline-block cursor-not-allowed rounded-[10px] bg-gold px-[18px] py-[11px] text-[13px] font-extrabold text-white opacity-60"
+                  >
+                    Unlock my plan
+                  </button>
+                  <span className="ml-3 text-[11px] font-semibold text-white/60">Coming soon</span>
+                </>
+              )}
             </div>
 
             <div className="rounded-[15px] border-[1.5px] border-gold bg-white px-[18px] py-5">
