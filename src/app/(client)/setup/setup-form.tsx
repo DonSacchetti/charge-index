@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
-import { createSession } from "@/app/setup/actions";
+import { createSession } from "@/app/(client)/setup/actions";
 import {
   FieldLabel,
   FormError,
@@ -140,79 +140,57 @@ export function SetupForm({
       </div>
 
       <SectionLabel>Tracking length</SectionLabel>
-      <div className="mb-[22px] flex gap-2">
-        {DAY_COUNTS.map((d) => {
+      <div className="mb-6 grid grid-cols-3 gap-2">
+        {DAY_COUNTS.map((d, i) => {
           const active = d === dayCount;
+          const level = [75, 50, 100][i];
           return (
             <button
               key={d}
               type="button"
               onClick={() => setDayCount(d)}
               aria-pressed={active}
-              className={`flex-1 rounded-[11px] border-[1.5px] py-[13px] text-[14px] font-extrabold ${
-                active
-                  ? "border-navy bg-navy text-white"
-                  : "border-line bg-white text-muted"
+              className={`relative overflow-hidden rounded-2xl border-[1.5px] py-4 transition hover:-translate-y-0.5 ${
+                active ? "animate-pop border-transparent text-white shadow-[0_12px_28px_-12px_rgba(19,36,73,0.7)]" : "border-line bg-white text-navy"
               }`}
+              style={active ? { background: `linear-gradient(145deg, var(--color-glow-${level}), var(--color-level-${level}))` } : undefined}
             >
-              {d} days
+              <span className="block font-serif text-[26px] leading-none font-semibold">{d}</span>
+              <span className={`mt-1 block text-[11px] font-extrabold tracking-[0.08em] uppercase ${active ? "text-white/85" : "text-muted"}`}>days</span>
             </button>
           );
         })}
       </div>
 
       <SectionLabel>Nudge me</SectionLabel>
-      <div className="mb-[22px] flex flex-col gap-[7px]">
-        {REMINDERS.map((r) => {
+      <div className="mb-6 grid gap-2 sm:grid-cols-2">
+        {REMINDERS.map((r, i) => {
           const active = r.value === reminder;
+          const level = [50, 100, 75, 25][i];
           return (
             <button
               key={r.value}
               type="button"
               onClick={() => setReminder(r.value)}
               aria-pressed={active}
-              className={`flex w-full items-center gap-[11px] rounded-[11px] border-[1.5px] px-[14px] py-3 text-left ${
-                active ? "border-navy bg-[#eef1f8]" : "border-line bg-white"
+              className={`flex w-full items-center gap-3 rounded-2xl border-[1.5px] px-4 py-3 text-left transition ${
+                active ? "bg-white shadow-[0_10px_26px_-14px_rgba(19,36,73,0.55)]" : "border-line bg-white hover:border-navy/30"
               }`}
+              style={active ? { borderColor: `var(--color-level-${level})` } : undefined}
             >
               <span
-                className={`h-[17px] w-[17px] flex-none rounded-full border-2 ${
-                  active
-                    ? "border-navy bg-navy shadow-[inset_0_0_0_2.5px_#fff]"
-                    : "border-line bg-white"
-                }`}
-              />
-              <span className="flex-1">
-                <span className="block text-[13.5px] font-extrabold text-navy">
-                  {r.label}
-                </span>
-                <span className="mt-px block text-[11px] text-muted">
-                  {r.detail}
-                </span>
+                className={`flex h-5 w-5 flex-none items-center justify-center rounded-full border-2 transition ${active ? "animate-pop" : ""}`}
+                style={{ borderColor: active ? `var(--color-level-${level})` : "var(--color-line)", background: active ? `var(--color-level-${level})` : "white" }}
+              >
+                {active ? <span className="h-2 w-2 rounded-full bg-white" /> : null}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[14px] font-extrabold text-navy">{r.label}</span>
+                <span className="mt-px block text-[11.5px] text-muted">{r.detail}</span>
               </span>
             </button>
           );
         })}
-      </div>
-
-      <div className="mb-[22px] rounded-r-[12px] border-l-[3px] border-gold bg-[#eef1f8] px-4 py-[15px]">
-        <div className="mb-[9px] text-[10px] font-extrabold tracking-[0.12em] text-navy uppercase">
-          Before you start
-        </div>
-        <div className="flex flex-col gap-[7px] text-[12.5px] leading-[1.6] text-body">
-          <div>
-            <strong className="text-navy">No right or wrong.</strong> Be honest,
-            don&rsquo;t judge the entry.
-          </div>
-          <div>
-            <strong className="text-navy">Stay curious.</strong> This is
-            discovery, not perfection.
-          </div>
-          <div>
-            <strong className="text-navy">Consistency over perfection.</strong>{" "}
-            Miss an hour, keep going.
-          </div>
-        </div>
       </div>
 
       <div className="mb-3">

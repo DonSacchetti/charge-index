@@ -6,7 +6,9 @@
   --color-navy-light: #24417e;
   --color-gold: #c9a96e;
   --color-gold-deep: #a8844a;
-  --color-cream: #e8e6e0;
+  --color-gold-bright: #e3c48a;
+  --color-cream: #efece4;
+  --color-paper: #fbfaf6;
   --color-ink: #1a1a2e;
   --color-muted: #8a8aa0;
   --color-body: #4a4a65;
@@ -17,6 +19,13 @@
   --color-level-50: #6b7bb8;
   --color-level-25: #d4943a;
   --color-level-10: #c04545;
+
+  /* Brighter siblings of the five charge colours, for glows and gradients. */
+  --color-glow-100: #3fbf7f;
+  --color-glow-75: #5b8ff0;
+  --color-glow-50: #8f9ee0;
+  --color-glow-25: #f2ad4e;
+  --color-glow-10: #ef6a6a;
 }
 
 @theme inline {
@@ -28,7 +37,9 @@
   --color-navy-light: var(--color-navy-light);
   --color-gold: var(--color-gold);
   --color-gold-deep: var(--color-gold-deep);
+  --color-gold-bright: var(--color-gold-bright);
   --color-cream: var(--color-cream);
+  --color-paper: var(--color-paper);
   --color-ink: var(--color-ink);
   --color-muted: var(--color-muted);
   --color-body: var(--color-body);
@@ -39,6 +50,66 @@
   --color-level-50: var(--color-level-50);
   --color-level-25: var(--color-level-25);
   --color-level-10: var(--color-level-10);
+  --color-glow-100: var(--color-glow-100);
+  --color-glow-75: var(--color-glow-75);
+  --color-glow-50: var(--color-glow-50);
+  --color-glow-25: var(--color-glow-25);
+  --color-glow-10: var(--color-glow-10);
+
+  --animate-rise: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-pop: pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-fade: fade 0.6s ease both;
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-drift: drift 18s ease-in-out infinite alternate;
+  --animate-shimmer: shimmer 3.2s linear infinite;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes pop {
+  0% { transform: scale(0.86); }
+  60% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(6%, -4%, 0) scale(1.08); }
+  100% { transform: translate3d(-5%, 5%, 0) scale(0.96); }
+}
+@keyframes shimmer {
+  from { background-position: 0% 50%; }
+  to { background-position: 200% 50%; }
+}
+/* A charge bar rising to its level and gently breathing. */
+@keyframes charge-rise {
+  from { transform: scaleY(0.08); }
+  to { transform: scaleY(1); }
+}
+@keyframes breathe {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.82); }
+}
+/* A tile filling with colour from the bottom, like a battery. */
+@keyframes fill-up {
+  from { clip-path: inset(100% 0 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+@keyframes draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes burst {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(1.9); opacity: 0; }
 }
 
 body {
@@ -50,4 +121,96 @@ body {
      mobile browsers zoom the whole page out to fit it. break-word only breaks
      a string that can't fit, and doesn't change how tables or flex items size. */
   overflow-wrap: break-word;
+}
+
+/* The five-colour charge spectrum — the brand ribbon. */
+/* background-image, not the background shorthand: the shorthand would reset
+   background-clip and break gradient text (.spectrum-text). */
+.spectrum {
+  background-image: linear-gradient(90deg, var(--color-level-100), var(--color-level-75), var(--color-level-50), var(--color-level-25), var(--color-level-10));
+}
+.spectrum-animated,
+.spectrum-text {
+  background-image: linear-gradient(90deg, var(--color-glow-100), var(--color-glow-75), var(--color-glow-50), var(--color-glow-25), var(--color-glow-10), var(--color-glow-25), var(--color-glow-50), var(--color-glow-75), var(--color-glow-100));
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+}
+.spectrum-text {
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  /* keep italic descenders and swashes inside the clip */
+  padding-right: 0.08em;
+}
+
+/* Night-sky navy with slow-drifting light in the charge colours. */
+.aurora {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: radial-gradient(120% 90% at 10% 0%, #1d3470 0%, var(--color-navy) 45%, var(--color-navy-deep) 100%);
+}
+.aurora::before,
+.aurora::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 70%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.55;
+  animation: var(--animate-drift);
+  pointer-events: none;
+}
+.aurora::before {
+  top: -35%;
+  right: -15%;
+  background: radial-gradient(circle, var(--color-glow-75), transparent 65%);
+}
+.aurora::after {
+  bottom: -45%;
+  left: -20%;
+  background: radial-gradient(circle, var(--color-glow-100), transparent 60%);
+  animation-delay: -9s;
+}
+.aurora-warm::after {
+  background: radial-gradient(circle, var(--color-glow-25), transparent 60%);
+}
+
+/* Paper grain, very subtle, for cream surfaces. */
+.grain {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0 0.2 0 0 0 0.035 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+.card-lift {
+  transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.25s ease;
+}
+.card-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px -18px rgba(19, 36, 73, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  .aurora::before,
+  .aurora::after {
+    display: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+  }
 }

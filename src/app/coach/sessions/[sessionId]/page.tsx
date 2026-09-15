@@ -69,7 +69,7 @@ export default async function CoachSessionPage({
         ← {clientName || "Client"}
       </Link>
 
-      <div className="mt-3 mb-5 flex flex-wrap items-end justify-between gap-5 rounded-[20px] bg-[linear-gradient(150deg,#0b1533,#132449_65%,#24417e)] px-[30px] py-7 text-white">
+      <div className="aurora animate-rise mt-3 mb-5 flex flex-wrap items-end justify-between gap-5 rounded-[28px] px-6 py-8 text-white shadow-[0_30px_70px_-35px_rgba(19,36,73,0.8)] sm:px-9">
         <div className="min-w-0 wrap-anywhere">
           <div className="mb-[7px] text-[10px] font-extrabold tracking-[0.15em] text-white/50 uppercase">
             Coach view · not visible to client
@@ -94,13 +94,13 @@ export default async function CoachSessionPage({
           <div className="flex flex-wrap justify-end gap-2">
             <Link
               href={`/plan/${session.id}`}
-              className="rounded-[10px] border-[1.5px] border-white/30 bg-white/10 px-4 py-[10px] text-[12.5px] font-extrabold text-white hover:bg-white/20"
+              className="inline-flex min-h-11 items-center rounded-2xl border-[1.5px] border-white/30 bg-white/10 px-5 text-[13.5px] font-extrabold text-white transition hover:bg-white/20"
             >
               Peak Plan
             </Link>
             <a
               href={`/coach/sessions/${session.id}/export.csv`}
-              className="rounded-[10px] bg-gold px-4 py-[11px] text-[12.5px] font-extrabold text-white hover:bg-gold-deep"
+              className="inline-flex min-h-11 items-center rounded-2xl bg-gold px-5 text-[13.5px] font-extrabold text-navy-deep transition hover:-translate-y-0.5 hover:bg-gold-bright"
             >
               Export CSV
             </a>
@@ -129,8 +129,8 @@ export default async function CoachSessionPage({
         ))}
       </div>
 
-      <Card className="mb-5">
-        <h2 className="mb-1 font-serif text-[18px] font-semibold text-navy">Charge curve</h2>
+      <Card className="mb-5" accent="spectrum">
+        <h2 className="mb-1 font-serif text-[22px] font-semibold text-navy">Charge curve</h2>
         <p className="mb-4 text-[12px] leading-normal text-muted">
           Average charge by hour across the session.
         </p>
@@ -170,8 +170,8 @@ export default async function CoachSessionPage({
       </div>
 
       {compared.length > 1 ? (
-        <Card className="mb-5">
-          <h2 className="mb-1 font-serif text-[18px] font-semibold text-navy">Compare sessions</h2>
+        <Card className="mb-5" accent={75}>
+          <h2 className="mb-1 font-serif text-[22px] font-semibold text-navy">Compare sessions</h2>
           <p className="mb-4 text-[12px] leading-normal text-muted">
             How this client&rsquo;s average charge has shifted between sessions.
           </p>
@@ -213,8 +213,8 @@ export default async function CoachSessionPage({
       ) : null}
 
       {reflections.length > 0 ? (
-        <Card>
-          <h2 className="mb-4 font-serif text-[18px] font-semibold text-navy">Client reflections</h2>
+        <Card accent="gold">
+          <h2 className="mb-4 font-serif text-[22px] font-semibold text-navy">Client reflections</h2>
           <div className="flex flex-col gap-4">
             {reflections.map((r) => (
               <div key={r.dayNumber} className="border-b border-[#f0efea] pb-4 last:border-b-0 last:pb-0">

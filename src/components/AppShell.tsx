@@ -1,55 +1,108 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
-type Props = {
-  /** Small uppercase line under the wordmark — "Getting set up", "Spring 2026". */
-  subtitle: string;
-  /** Pill on the right of the header — "5–7 days", "Day 2 of 5". */
-  badge?: string;
-  /**
-   * Progress rail under the header, as in the prototype: segments before
-   * `current` read as done, `current` is gold, the rest are faint. The
-   * prototype uses day_count + 2 segments — setup, one per day, results.
-   */
+/**
+ * Client page frame. The navy hero band continues out of the nav bar and holds
+ * the page's title; content cards float up over its lower edge.
+ */
+export function PageHero({
+  eyebrow,
+  title,
+  lead,
+  badge,
+  progress,
+  aside,
+  children,
+}: {
+  eyebrow?: ReactNode;
+  title: ReactNode;
+  lead?: ReactNode;
+  badge?: ReactNode;
+  /** Segmented rail: segments before `current` done, `current` glowing. */
   progress?: { total: number; current: number };
-  children: ReactNode;
-};
-
-export function AppShell({ subtitle, badge, progress, children }: Props) {
-  const segments = progress?.total ?? 7;
-  const current = progress?.current ?? 0;
-
+  aside?: ReactNode;
+  children?: ReactNode;
+}) {
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-1 flex-col bg-white shadow-[0_0_60px_rgba(19,36,73,0.08)] sm:my-8 sm:min-h-0 sm:rounded-3xl sm:overflow-hidden">
-      <header className="bg-navy px-5 pt-5 pb-4 text-white">
-        <div className="flex items-start justify-between gap-3">
+    <section className="aurora -mt-px text-white print:hidden">
+      <div className="mx-auto max-w-6xl px-5 pt-8 pb-20 sm:px-8 sm:pt-10 sm:pb-24">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 wrap-anywhere">
-            <div className="font-serif text-[19px] leading-none font-semibold">
-              Charge Index<sup className="text-[10px]">™</sup>
-            </div>
-            <div className="mt-[3px] text-[10px] font-bold tracking-[0.13em] text-white/50 uppercase">
-              {subtitle}
-            </div>
+            {eyebrow ? (
+              <p className="animate-rise text-[11px] font-extrabold tracking-[0.2em] text-gold-bright uppercase">{eyebrow}</p>
+            ) : null}
+            <h1 className="animate-rise mt-3 font-serif text-[34px] leading-[1.05] font-semibold tracking-[-0.01em] [animation-delay:60ms] sm:text-[48px]">
+              {title}
+            </h1>
+            {lead ? <div className="animate-rise mt-3 max-w-2xl text-[15px] leading-[1.65] text-white/75 [animation-delay:120ms]">{lead}</div> : null}
           </div>
-          {badge ? (
-            <span className="rounded-full border border-white/20 bg-white/12 px-[11px] py-[5px] text-[10.5px] font-extrabold whitespace-nowrap">
-              {badge}
-            </span>
+          {badge || aside ? (
+            <div className="animate-rise flex flex-col items-end gap-3 [animation-delay:160ms]">
+              {badge ? (
+                <span className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[12px] font-extrabold whitespace-nowrap backdrop-blur">
+                  {badge}
+                </span>
+              ) : null}
+              {aside}
+            </div>
           ) : null}
         </div>
-        <div className="mt-[13px] flex gap-[3px]">
-          {Array.from({ length: segments }, (_, i) => (
-            <div
-              key={i}
-              className={`h-[3px] flex-1 rounded-sm ${
-                i < current ? "bg-white/50" : i === current ? "bg-gold" : "bg-white/13"
-              }`}
-            />
-          ))}
-        </div>
-      </header>
+        {progress ? <ProgressRail {...progress} /> : null}
+        {children}
+      </div>
+    </section>
+  );
+}
 
-      <div className="flex flex-1 flex-col bg-[#faf9f7]">{children}</div>
+export function ProgressRail({ total, current }: { total: number; current: number }) {
+  return (
+    <div className="mt-7 flex gap-[5px]" aria-hidden>
+      {Array.from({ length: total }, (_, i) => (
+        <div key={i} className="h-[5px] flex-1 overflow-hidden rounded-full bg-white/12">
+          {i <= current ? (
+            <div
+              className={`h-full origin-left rounded-full ${i === current ? "spectrum-animated" : "bg-white/60"}`}
+              style={{ animation: `rise 0.5s ease ${i * 40}ms both` }}
+            />
+          ) : null}
+        </div>
+      ))}
     </div>
+  );
+}
+
+/** Content area that overlaps the hero's lower edge. */
+export function PageBody({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <div className={`relative mx-auto -mt-14 w-full max-w-6xl px-4 pb-12 sm:px-8 ${className}`}>{children}</div>;
+}
+
+/** The standard card: paper, soft shadow, optional coloured top accent. */
+export function Surface({
+  children,
+  className = "",
+  accent,
+  style,
+  delay = 0,
+}: {
+  children: ReactNode;
+  className?: string;
+  /** A level (100/75/50/25/10), "spectrum", or "gold". */
+  accent?: number | "spectrum" | "gold";
+  style?: CSSProperties;
+  delay?: number;
+}) {
+  return (
+    <section
+      className={`animate-rise relative overflow-hidden rounded-[26px] bg-paper shadow-[0_24px_60px_-30px_rgba(19,36,73,0.45),0_2px_10px_rgba(19,36,73,0.05)] ${className}`}
+      style={{ animationDelay: `${delay}ms`, ...style }}
+    >
+      {accent ? (
+        <div
+          className={`absolute inset-x-0 top-0 h-[5px] ${accent === "spectrum" ? "spectrum" : ""}`}
+          style={accent === "gold" ? { background: "var(--color-gold)" } : typeof accent === "number" ? { background: `var(--color-level-${accent})` } : undefined}
+        />
+      ) : null}
+      {children}
+    </section>
   );
 }
 
@@ -62,9 +115,7 @@ export function FieldLabel({
   children: ReactNode;
 }) {
   return (
-    <label
-      htmlFor={htmlFor}
-      className="mb-[5px] block text-[10.5px] font-extrabold tracking-[0.07em] text-navy uppercase">
+    <label htmlFor={htmlFor} className="mb-[6px] block text-[11px] font-extrabold tracking-[0.08em] text-navy uppercase">
       {children}
     </label>
   );
@@ -72,40 +123,33 @@ export function FieldLabel({
 
 export function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <div className="mb-[11px] text-[10px] font-extrabold tracking-[0.14em] text-muted uppercase">
+    <div className="mb-3 flex items-center gap-3 text-[11px] font-extrabold tracking-[0.16em] text-muted uppercase">
+      <span className="spectrum h-[3px] w-6 rounded-full" />
       {children}
     </div>
   );
 }
 
 export const inputClass =
-  "w-full rounded-[11px] border-[1.5px] border-line bg-white px-[14px] py-3 text-[15px] text-ink outline-none focus:border-navy focus:ring-[3px] focus:ring-navy/10";
+  "w-full rounded-2xl border-[1.5px] border-line bg-white px-4 py-3 text-[15px] text-ink outline-none transition focus:border-gold focus:ring-4 focus:ring-gold/20";
 
 export function FormError({ message }: { message?: string | null }) {
   if (!message) return null;
   return (
-    <p
-      role="alert"
-      className="rounded-[11px] border-[1.5px] border-level-10/30 bg-level-10/8 px-[14px] py-3 text-[13px] font-semibold text-level-10"
-    >
+    <p role="alert" className="animate-pop rounded-2xl border-[1.5px] border-level-10/30 bg-level-10/8 px-4 py-3 text-[13px] font-bold text-level-10">
       {message}
     </p>
   );
 }
 
-export function SubmitButton({
-  children,
-  pending,
-}: {
-  children: ReactNode;
-  pending?: boolean;
-}) {
+export function SubmitButton({ children, pending }: { children: ReactNode; pending?: boolean }) {
   return (
     <button
       type="submit"
       disabled={pending}
-      className="w-full rounded-[13px] bg-navy px-4 py-4 text-[15px] font-extrabold text-white shadow-[0_6px_20px_rgba(19,36,73,0.28)] transition-colors hover:bg-navy-light disabled:opacity-60"
+      className="group relative w-full overflow-hidden rounded-2xl bg-navy px-4 py-4 text-[15px] font-extrabold text-white shadow-[0_14px_34px_-14px_rgba(19,36,73,0.9)] transition hover:-translate-y-0.5 disabled:opacity-60"
     >
+      <span className="spectrum-animated absolute inset-x-0 bottom-0 h-[3px]" aria-hidden />
       {pending ? "One moment…" : children}
     </button>
   );

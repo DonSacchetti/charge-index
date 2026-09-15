@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
@@ -24,5 +25,7 @@ export async function completeSession(sessionId: string) {
     .eq("id", sessionId)
     .eq("client_id", user.id);
 
+  // The nav's "Results" item now points at this session.
+  revalidatePath("/", "layout");
   redirect(`/track/${sessionId}/complete`);
 }

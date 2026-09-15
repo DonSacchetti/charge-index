@@ -35,9 +35,9 @@ export default async function PeakPlanPage({ params }: PageProps<"/plan/[session
   ];
 
   return (
-    <div className="mx-auto w-full max-w-[1000px] px-4 py-6 sm:px-6 print:max-w-none print:p-0">
+    <div className="mx-auto w-full max-w-[1000px] px-4 py-8 sm:px-6 print:max-w-none print:p-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <Link href={backHref} className="text-[12px] font-bold text-muted underline">
+        <Link href={backHref} className="inline-flex min-h-11 items-center text-[13px] font-extrabold text-navy hover:underline">
           ← Back
         </Link>
         <div className="flex flex-wrap items-center gap-2">
@@ -45,8 +45,12 @@ export default async function PeakPlanPage({ params }: PageProps<"/plan/[session
           {windows.peak.length ? (
             <a
               href={`/plan/${sessionId}/peak-plan.ics`}
-              className="rounded-[10px] bg-navy px-4 py-[11px] text-[12.5px] font-extrabold text-white hover:bg-navy-light"
+              className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-gold px-5 text-[13.5px] font-extrabold text-navy-deep shadow-[0_10px_26px_-12px_rgba(201,169,110,0.9)] transition hover:-translate-y-0.5 hover:bg-gold-bright"
             >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>
+                <rect x="4" y="5" width="16" height="15" rx="2" />
+                <path d="M8 3v4M16 3v4M4 10h16" />
+              </svg>
               Calendar file
             </a>
           ) : (
@@ -55,21 +59,23 @@ export default async function PeakPlanPage({ params }: PageProps<"/plan/[session
         </div>
       </div>
 
-      <article className="overflow-hidden rounded-[4px] bg-white shadow-[0_8px_40px_rgba(19,36,73,0.13)] print:rounded-none print:shadow-none">
-        <header className="bg-[linear-gradient(150deg,#0b1533,#132449_60%,#24417e)] px-7 py-9 text-white sm:px-[46px] print:[-webkit-print-color-adjust:exact] print:[print-color-adjust:exact]">
-          <div className="mb-3 text-[10px] font-extrabold tracking-[0.2em] text-gold uppercase">Soenen Strategies</div>
-          <h1 className="font-serif text-[36px] leading-[1.06] font-semibold tracking-[-0.015em] sm:text-[44px]">
+      <article className="animate-rise overflow-hidden rounded-[28px] bg-white shadow-[0_40px_90px_-40px_rgba(19,36,73,0.55)] print:animate-none print:rounded-none print:shadow-none">
+        <header className="aurora px-7 py-10 text-white sm:px-[46px] print:[-webkit-print-color-adjust:exact] print:[print-color-adjust:exact]">
+          <div className="mb-3 text-[10.5px] font-extrabold tracking-[0.22em] text-gold-bright uppercase">Soenen Strategies</div>
+          <h1 className="font-serif text-[40px] leading-[1.02] font-semibold tracking-[-0.015em] sm:text-[56px]">
             The Peak Plan<sup className="text-[18px]">™</sup>
           </h1>
           <p className="mt-3 text-[14px] leading-[1.6] text-white/80">
             Prepared for {clientName || "your client"} · {session.label || ""} · {session.day_count} days of Charge Index data
           </p>
         </header>
+        <div className="spectrum h-[5px] print:[-webkit-print-color-adjust:exact] print:[print-color-adjust:exact]" />
 
         <div className="px-7 pt-[34px] pb-10 sm:px-[46px] print:[-webkit-print-color-adjust:exact] print:[print-color-adjust:exact]">
           <div className="mb-8 grid gap-4 md:grid-cols-3 print:grid-cols-3">
             {PLAN_WINDOWS.map((w) => (
-              <div key={w.band} className="rounded-[14px] border-[1.5px] p-5" style={{ borderColor: w.color, background: w.tint }}>
+              <div key={w.band} className="relative overflow-hidden rounded-[20px] border-[1.5px] p-5 print:break-inside-avoid" style={{ borderColor: w.color, background: w.tint }}>
+                <div className="absolute inset-x-0 top-0 h-1.5" style={{ background: w.color }} />
                 <div className="mb-2 text-[9.5px] font-extrabold tracking-[0.13em] uppercase" style={{ color: w.color }}>
                   {w.label}
                 </div>
@@ -87,7 +93,7 @@ export default async function PeakPlanPage({ params }: PageProps<"/plan/[session
             {schedule.map((s) => (
               <li
                 key={s.hour}
-                className="grid grid-cols-[84px_1fr] items-baseline gap-3 rounded-r-[9px] border-l-[3px] px-4 py-[9px] print:break-inside-avoid"
+                className="grid grid-cols-[84px_1fr] items-baseline gap-3 rounded-r-xl border-l-4 px-4 py-[9px] print:break-inside-avoid"
                 style={{ borderColor: s.color, background: s.tint }}
               >
                 <span className="text-[13px] font-extrabold text-navy">{formatHourLong(s.hour)}</span>
@@ -108,7 +114,7 @@ export default async function PeakPlanPage({ params }: PageProps<"/plan/[session
                 <ol className="m-0 flex list-none flex-col gap-[11px] p-0">
                   {guards.map((g) => (
                     <li key={g.n} className="flex items-baseline gap-[11px]">
-                      <span className="flex-none font-serif text-[17px] font-semibold text-gold">{g.n}</span>
+                      <span className="flex h-8 w-8 flex-none items-center justify-center rounded-xl bg-navy font-serif text-[14px] font-semibold text-gold-bright print:[-webkit-print-color-adjust:exact] print:[print-color-adjust:exact]">{g.n}</span>
                       <span className="text-[13px] leading-[1.65] text-body">{g.text}</span>
                     </li>
                   ))}
@@ -117,7 +123,7 @@ export default async function PeakPlanPage({ params }: PageProps<"/plan/[session
                 <p className="text-[13px] leading-[1.65] text-body">Log more hours to find the windows worth guarding.</p>
               )}
             </div>
-            <div className="rounded-[14px] bg-[#eef1f8] p-5">
+            <div className="rounded-[20px] bg-[#eef1f8] p-5">
               <div className="mb-[10px] text-[10px] font-extrabold tracking-[0.13em] text-navy uppercase">Session</div>
               <dl className="m-0 flex flex-col gap-2">
                 {meta.map((m) => (

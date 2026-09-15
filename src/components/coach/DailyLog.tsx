@@ -13,8 +13,8 @@ export function DailyLog({ entries, hours, dayCount }: { entries: Entry[]; hours
   const perDay = days.map((d) => hours.filter((h) => value.has(`${d}:${h}`)).length);
 
   return (
-    <Card>
-      <h2 className="mb-1 font-serif text-[18px] font-semibold text-navy">Daily log</h2>
+    <Card accent={100}>
+      <h2 className="mb-1 font-serif text-[22px] font-semibold text-navy">Daily log</h2>
       <p className="mb-4 text-[12px] leading-normal text-muted">
         Every hour exactly as the client logged it. Blank means the hour was skipped.
       </p>

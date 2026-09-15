@@ -24,16 +24,15 @@ export default async function AllSessions() {
 
   return (
     <CoachShell>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+      <div className="aurora animate-rise mb-6 flex flex-wrap items-end justify-between gap-4 rounded-[28px] px-6 py-8 text-white shadow-[0_30px_70px_-35px_rgba(19,36,73,0.8)] sm:px-9">
         <div>
-          <div className="text-[10px] font-extrabold tracking-[0.15em] text-muted uppercase">
-            Coach view · not visible to client
-          </div>
-          <h1 className="mt-2 font-serif text-[30px] leading-tight font-semibold text-navy">All sessions</h1>
+          <div className="text-[11px] font-extrabold tracking-[0.2em] text-gold-bright uppercase">Coach view · not visible to client</div>
+          <h1 className="mt-2 font-serif text-[40px] leading-tight font-semibold">All sessions</h1>
+          <p className="mt-1 text-[13px] text-white/70">{sessions.length} across every client</p>
         </div>
         <a
           href="/coach/export/sessions.csv"
-          className="rounded-[10px] bg-gold px-4 py-[11px] text-[12.5px] font-extrabold text-white hover:bg-gold-deep"
+          className="inline-flex min-h-11 items-center rounded-2xl bg-gold px-5 text-[13.5px] font-extrabold text-navy-deep transition hover:-translate-y-0.5 hover:bg-gold-bright"
         >
           Export all (CSV)
         </a>

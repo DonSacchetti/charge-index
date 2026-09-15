@@ -20,8 +20,8 @@ export function CoachNav() {
             key={l.href}
             href={l.href}
             aria-current={active ? "page" : undefined}
-            className={`inline-flex min-h-10 items-center rounded-[9px] px-3 text-[12.5px] font-extrabold ${
-              active ? "bg-navy text-white" : "text-navy hover:bg-navy/8"
+            className={`inline-flex min-h-10 items-center rounded-full px-3.5 text-[13px] font-extrabold transition ${
+              active ? "bg-white text-navy shadow-[0_6px_20px_-8px_rgba(255,255,255,0.6)]" : "text-white/80 hover:bg-white/10 hover:text-white"
             }`}
           >
             {l.label}
@@ -30,7 +30,7 @@ export function CoachNav() {
       })}
       <Link
         href="/setup"
-        className="inline-flex min-h-10 items-center rounded-[9px] px-3 text-[12.5px] font-bold text-muted hover:bg-navy/8 hover:text-navy"
+        className="inline-flex min-h-10 items-center rounded-full px-3.5 text-[13px] font-bold text-white/60 hover:bg-white/10 hover:text-white"
       >
         Client view
       </Link>

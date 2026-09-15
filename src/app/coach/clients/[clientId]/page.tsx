@@ -38,7 +38,7 @@ export default async function CoachClientPage({ params }: PageProps<"/coach/clie
         ← Clients
       </Link>
 
-      <div className="mt-3 mb-5 flex flex-wrap items-end justify-between gap-5 rounded-[20px] bg-[linear-gradient(150deg,#0b1533,#132449_65%,#24417e)] px-[30px] py-7 text-white">
+      <div className="aurora animate-rise mt-3 mb-5 flex flex-wrap items-end justify-between gap-5 rounded-[28px] px-6 py-8 text-white shadow-[0_30px_70px_-35px_rgba(19,36,73,0.8)] sm:px-9">
         <div className="min-w-0 wrap-anywhere">
           <div className="mb-[7px] text-[10px] font-extrabold tracking-[0.15em] text-white/50 uppercase">
             Coach view · not visible to client
@@ -59,14 +59,14 @@ export default async function CoachClientPage({ params }: PageProps<"/coach/clie
         <div className="flex flex-wrap gap-2">
           <a
             href={`/coach/clients/${clientId}/summary.csv`}
-            className="rounded-[10px] border-[1.5px] border-white/30 bg-white/10 px-4 py-[10px] text-[12.5px] font-extrabold text-white hover:bg-white/20"
+            className="inline-flex min-h-11 items-center rounded-2xl border-[1.5px] border-white/30 bg-white/10 px-5 text-[13.5px] font-extrabold text-white transition hover:bg-white/20"
           >
             Summary (CSV)
           </a>
           {bundles.length ? (
             <a
               href={`/coach/clients/${clientId}/sessions.zip`}
-              className="rounded-[10px] bg-gold px-4 py-[11px] text-[12.5px] font-extrabold text-white hover:bg-gold-deep"
+              className="inline-flex min-h-11 items-center rounded-2xl bg-gold px-5 text-[13.5px] font-extrabold text-navy-deep transition hover:-translate-y-0.5 hover:bg-gold-bright"
             >
               All session data (ZIP)
             </a>
@@ -74,8 +74,8 @@ export default async function CoachClientPage({ params }: PageProps<"/coach/clie
         </div>
       </div>
 
-      <Card className="mb-5 p-0">
-        <h2 className="px-6 pt-5 pb-3 font-serif text-[18px] font-semibold text-navy">Sessions</h2>
+      <Card className="mb-5 p-0" accent="spectrum">
+        <h2 className="px-6 pt-6 pb-3 font-serif text-[22px] font-semibold text-navy">Sessions</h2>
         {bundles.length === 0 ? (
           <p className="px-6 pb-6 text-[13.5px] text-body">No sessions yet.</p>
         ) : (
@@ -134,8 +134,8 @@ export default async function CoachClientPage({ params }: PageProps<"/coach/clie
         )}
       </Card>
 
-      <Card>
-        <h2 className="mb-1 font-serif text-[18px] font-semibold text-navy">Coach notes</h2>
+      <Card accent="gold">
+        <h2 className="mb-1 font-serif text-[22px] font-semibold text-navy">Coach notes</h2>
         <p className="mb-4 text-[12px] text-muted">Private to coaches. Clients never see these.</p>
         <NoteForm clientId={clientId} sessions={bundles.map((b) => ({ id: b.session.id, label: b.session.label || "Untitled session" }))} />
 

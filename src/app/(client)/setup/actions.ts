@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { REMINDERS, type ReminderPref } from "@/lib/charge";
@@ -102,5 +103,7 @@ export async function createSession(
 
   if (error) return { error: error.message };
 
+  // The nav's "Log" item now points at this session.
+  revalidatePath("/", "layout");
   redirect(`/track/${data.id}`);
 }

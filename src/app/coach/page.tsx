@@ -21,25 +21,33 @@ export default async function CoachRoster({ searchParams }: PageProps<"/coach">)
 
   return (
     <CoachShell>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <div className="text-[10px] font-extrabold tracking-[0.15em] text-muted uppercase">
-            Coach view · not visible to client
+      <div className="aurora animate-rise mb-6 rounded-[28px] px-6 py-8 text-white shadow-[0_30px_70px_-35px_rgba(19,36,73,0.8)] sm:px-9">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="text-[11px] font-extrabold tracking-[0.2em] text-gold-bright uppercase">Coach view · not visible to client</div>
+            <h1 className="mt-2 font-serif text-[40px] leading-tight font-semibold">Clients</h1>
           </div>
-          <h1 className="mt-2 font-serif text-[30px] leading-tight font-semibold text-navy">Clients</h1>
-          <p className="mt-1 text-[12.5px] text-muted">
-            {all.length} {all.length === 1 ? "client" : "clients"} · {data.sessions.length}{" "}
-            {data.sessions.length === 1 ? "session" : "sessions"} · {active} tracking now
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
           <a
             href="/coach/export/sessions.csv"
-            className="rounded-[10px] bg-gold px-4 py-[11px] text-[12.5px] font-extrabold text-white hover:bg-gold-deep"
+            className="inline-flex min-h-11 items-center rounded-2xl bg-gold px-5 text-[13.5px] font-extrabold text-navy-deep transition hover:-translate-y-0.5 hover:bg-gold-bright"
           >
             Export all (CSV)
           </a>
         </div>
+        <dl className="m-0 mt-7 grid grid-cols-3 gap-3">
+          {[
+            { label: all.length === 1 ? "client" : "clients", value: all.length, level: 75 },
+            { label: data.sessions.length === 1 ? "session" : "sessions", value: data.sessions.length, level: 100 },
+            { label: "tracking now", value: active, level: 25 },
+          ].map((s, i) => (
+            <div key={s.label} className="animate-rise rounded-2xl border border-white/10 bg-white/[0.07] px-4 py-4 backdrop-blur" style={{ animationDelay: `${120 + i * 70}ms` }}>
+              <dd className="m-0 font-serif text-[34px] leading-none font-semibold" style={{ color: `var(--color-glow-${s.level})` }}>
+                {s.value}
+              </dd>
+              <dt className="mt-2 text-[12px] font-bold text-white/70">{s.label}</dt>
+            </div>
+          ))}
+        </dl>
       </div>
 
       <form className="mb-4 flex gap-2" role="search">
@@ -52,9 +60,9 @@ export default async function CoachRoster({ searchParams }: PageProps<"/coach">)
           type="search"
           defaultValue={query}
           placeholder="Search by name or email"
-          className="w-full max-w-sm rounded-[11px] border-[1.5px] border-line bg-white px-[14px] py-[10px] text-[14px] text-ink outline-none focus:border-navy"
+          className="w-full max-w-sm rounded-2xl border-[1.5px] border-line bg-white px-4 py-3 text-[14px] text-ink outline-none transition focus:border-gold focus:ring-4 focus:ring-gold/20"
         />
-        <button type="submit" className="rounded-[11px] bg-navy px-4 text-[13px] font-extrabold text-white hover:bg-navy-light">
+        <button type="submit" className="rounded-2xl bg-navy px-5 text-[13.5px] font-extrabold text-white transition hover:bg-navy-light">
           Search
         </button>
       </form>

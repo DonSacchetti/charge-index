@@ -1,0 +1,144 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+
+import { PageBody, PageHero, SectionLabel, Surface } from "@/components/AppShell";
+import { buildSessionSlots, formatHour, hourOf } from "@/lib/slots";
+import { createClient } from "@/lib/supabase/server";
+
+import { SetupForm } from "./setup-form";
+
+export default async function SetupPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login?next=/setup");
+
+  const [{ data: profile }, { data: sessions }] = await Promise.all([
+    supabase.from("profiles").select("full_name, role").eq("id", user.id).single(),
+    supabase
+      .from("tracking_sessions")
+      .select("id, label, day_count, status, start_date, wake_time, sleep_time, daily_entries(count)")
+      .eq("client_id", user.id)
+      .order("created_at", { ascending: false }),
+  ]);
+
+  const first = profile?.full_name?.trim().split(/\s+/)[0];
+  const returning = (sessions?.length ?? 0) > 0;
+
+  return (
+    <>
+      <PageHero
+        eyebrow={returning ? "Your Charge Index" : "Getting set up · 5–7 days"}
+        title={
+          returning ? (
+            <>Welcome back{first ? `, ${first}` : ""}.</>
+          ) : (
+            <>
+              How charged
+              <br />
+              are you?
+            </>
+          )
+        }
+        lead={
+          <>
+            Log your energy through your waking hours for five to seven days. Five choices every time, from{" "}
+            <strong className="text-white">100% Fully Charged</strong> down to <strong className="text-white">10% Recharge Needed</strong>. No right or
+            wrong answers — it&rsquo;s data, not a grade.
+          </>
+        }
+      />
+
+      <PageBody>
+        <div className="grid items-start gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="flex flex-col gap-6">
+            {returning ? (
+              <Surface className="p-6 sm:p-7" accent="spectrum">
+                <SectionLabel>Your sessions</SectionLabel>
+                <ul className="m-0 flex list-none flex-col gap-3 p-0">
+                  {sessions!.map((s, i) => {
+                    const done = s.status === "completed";
+                    const hours = buildSessionSlots(hourOf(s.wake_time), hourOf(s.sleep_time)).length;
+                    const logged = s.daily_entries[0]?.count ?? 0;
+                    const pct = hours ? Math.min(100, Math.round((logged / (hours * s.day_count)) * 100)) : 0;
+                    return (
+                      <li key={s.id} className="animate-rise rounded-2xl border border-line bg-white p-4" style={{ animationDelay: `${80 + i * 60}ms` }}>
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <Link
+                            href={done ? `/track/${s.id}/complete` : `/track/${s.id}`}
+                            className="min-w-0 font-serif text-[19px] font-semibold text-navy wrap-anywhere hover:underline"
+                          >
+                            {s.label ?? "Untitled session"}
+                          </Link>
+                          <span
+                            className={`rounded-full px-[10px] py-[3px] text-[11px] font-extrabold ${
+                              done ? "bg-level-100/12 text-level-100" : "bg-level-75/12 text-level-75"
+                            }`}
+                          >
+                            {done ? "Complete" : "In progress"}
+                          </span>
+                        </div>
+                        <div className="mt-1 text-[12px] text-muted">
+                          {s.day_count} days · {formatHour(hourOf(s.wake_time))} – {formatHour(hourOf(s.sleep_time))} · started {s.start_date}
+                        </div>
+                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-cream">
+                          <div
+                            className="h-full origin-left rounded-full"
+                            style={{
+                              width: `${pct}%`,
+                              background: done ? "var(--color-level-100)" : "linear-gradient(90deg, var(--color-glow-75), var(--color-glow-100))",
+                              animation: `charge-rise 0.9s cubic-bezier(.2,.8,.2,1) ${150 + i * 60}ms both`,
+                            }}
+                          />
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[12px]">
+                          <span className="font-bold text-body">
+                            {logged} of {hours * s.day_count} hours logged
+                          </span>
+                          <Link href={done ? `/track/${s.id}/complete` : `/track/${s.id}`} className="font-extrabold text-level-75 hover:underline">
+                            {done ? "See results →" : "Keep logging →"}
+                          </Link>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="mt-4 text-[12px] text-muted">Starting a new session won&rsquo;t touch these.</p>
+              </Surface>
+            ) : null}
+
+            <Surface className="p-6 sm:p-7" accent="gold" delay={120}>
+              <SectionLabel>Before you start</SectionLabel>
+              <ul className="m-0 flex list-none flex-col gap-4 p-0">
+                {[
+                  { t: "No right or wrong.", d: "Be honest, don't judge the entry.", level: 100 },
+                  { t: "Stay curious.", d: "This is discovery, not perfection.", level: 75 },
+                  { t: "Consistency over perfection.", d: "Miss an hour, keep going.", level: 25 },
+                ].map((tip) => (
+                  <li key={tip.t} className="flex gap-3">
+                    <span className="mt-[3px] h-5 w-1.5 flex-none rounded-full" style={{ background: `var(--color-level-${tip.level})` }} />
+                    <span className="text-[14px] leading-[1.6] text-body">
+                      <strong className="text-navy">{tip.t}</strong> {tip.d}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {profile?.role === "coach" || profile?.role === "admin" ? (
+                <Link href="/coach" className="mt-5 inline-flex min-h-11 items-center text-[13px] font-extrabold text-navy underline">
+                  Go to coach view
+                </Link>
+              ) : null}
+            </Surface>
+          </div>
+
+          <Surface className="p-6 sm:p-8" accent="spectrum" delay={60}>
+            <h2 className="font-serif text-[28px] font-semibold text-navy">{returning ? "Start a new session" : "Set up your session"}</h2>
+            <p className="mt-1 mb-6 text-[13.5px] text-muted">Two minutes, then one tap an hour.</p>
+            <SetupForm defaultName={profile?.full_name ?? ""} email={user.email ?? ""} />
+          </Surface>
+        </div>
+      </PageBody>
+    </>
+  );
+}
