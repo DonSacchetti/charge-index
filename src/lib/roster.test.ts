@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { fetchAll } from "@/lib/fetch-all";
 import { buildRoster, buildSummaryCsv, filterRoster } from "@/lib/roster";
 
-const profile = (id: string, name: string | null, email = `${id}@example.com`) => ({ id, full_name: name, email, created_at: "2026-09-01T00:00:00Z" });
+const profile = (id: string, name: string | null, email = `${id}@example.com`, role: "client" | "coach" | "admin" = "client") => ({ id, full_name: name, email, created_at: "2026-09-01T00:00:00Z", role });
 const session = (id: string, client: string, start: string, status = "completed") => ({
   id, client_id: client, label: id, status, start_date: start, created_at: `${start}T10:00:00Z`, day_count: 5,
 });
@@ -24,6 +24,16 @@ describe("buildRoster", () => {
 
   it("puts the most recent activity first, clients with no sessions last by name", () => {
     expect(roster.map((c) => c.id)).toEqual(["amy", "ben", "dan", "cat"]);
+  });
+
+  it("includes staff who have tracked a session, and leaves out staff who haven't", () => {
+    const withStaff = buildRoster(
+      [profile("amy", "Amy"), profile("jen", "Jen", "jen@example.com", "admin"), profile("kate", "Kate", "kate@example.com", "coach")],
+      [session("j1", "jen", "2026-09-10")],
+      new Set(),
+      [],
+    );
+    expect(withStaff.map((c) => [c.id, c.role])).toEqual([["jen", "admin"], ["amy", "client"]]);
   });
 
   it("names unnamed clients", () => {

@@ -7,7 +7,13 @@ import { csvCell } from "@/lib/peak-plan";
 import { formatHour } from "@/lib/slots";
 import { formatWindow, type Windows } from "@/lib/weekly-map";
 
-export type RosterProfile = { id: string; full_name: string | null; email: string | null; created_at: string };
+export type RosterProfile = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  created_at: string;
+  role: "client" | "coach" | "admin";
+};
 
 export type RosterSession = {
   id: string;
@@ -24,6 +30,7 @@ export type RosterClient = {
   name: string;
   email: string | null;
   joined: string;
+  role: RosterProfile["role"];
   sessionCount: number;
   completedCount: number;
   latest: RosterSession | null;
@@ -35,6 +42,9 @@ export type RosterClient = {
  * One row per client: session counts, the most recent session, how many AI
  * drafts and notes exist. Sorted so the clients Jen most likely needs are on
  * top — most recently started session first, then clients with none, by name.
+ *
+ * Coaches and admins appear only if they've tracked a session themselves —
+ * Jen may well log her own energy, and it should be as visible as anyone's.
  */
 export function buildRoster(
   profiles: RosterProfile[],
@@ -54,6 +64,7 @@ export function buildRoster(
     b.start_date.localeCompare(a.start_date) || b.created_at.localeCompare(a.created_at);
 
   return profiles
+    .filter((p) => p.role === "client" || byClient.has(p.id))
     .map((p) => {
       const own = (byClient.get(p.id) ?? []).sort(newest);
       return {
@@ -61,6 +72,7 @@ export function buildRoster(
         name: p.full_name?.trim() || "Unnamed client",
         email: p.email,
         joined: p.created_at,
+        role: p.role,
         sessionCount: own.length,
         completedCount: own.filter((s) => s.status === "completed").length,
         latest: own[0] ?? null,

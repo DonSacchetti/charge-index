@@ -24,10 +24,7 @@ export default async function AllSessions() {
 
   return (
     <CoachShell>
-      <Link href="/coach" className="text-[12px] font-bold text-muted underline">
-        ← Clients
-      </Link>
-      <div className="mt-3 mb-6 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="text-[10px] font-extrabold tracking-[0.15em] text-muted uppercase">
             Coach view · not visible to client

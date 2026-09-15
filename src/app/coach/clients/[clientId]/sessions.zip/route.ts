@@ -13,11 +13,11 @@ export async function GET(_request: Request, { params }: RouteContext<"/coach/cl
   const { clientId } = await params;
   const { supabase } = await requireCoach(`/coach/clients/${clientId}`);
 
-  const { data: client } = await supabase.from("profiles").select("full_name, role").eq("id", clientId).maybeSingle();
-  if (!client || client.role !== "client") notFound();
-
-  const bundles = await loadSessionBundles(supabase, clientId);
-  if (bundles.length === 0) notFound();
+  const [{ data: client }, bundles] = await Promise.all([
+    supabase.from("profiles").select("full_name, role").eq("id", clientId).maybeSingle(),
+    loadSessionBundles(supabase, clientId),
+  ]);
+  if (!client || bundles.length === 0) notFound();
 
   const files: Record<string, Uint8Array> = {};
   const used = new Set<string>();

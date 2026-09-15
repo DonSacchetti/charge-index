@@ -10,10 +10,14 @@ export async function GET(_request: Request, { params }: RouteContext<"/coach/cl
   const { clientId } = await params;
   const { supabase } = await requireCoach(`/coach/clients/${clientId}`);
 
-  const { data: client } = await supabase.from("profiles").select("full_name, role").eq("id", clientId).maybeSingle();
-  if (!client || client.role !== "client") notFound();
+  const [{ data: client }, bundles] = await Promise.all([
+    supabase.from("profiles").select("full_name, role").eq("id", clientId).maybeSingle(),
+    loadSessionBundles(supabase, clientId),
+  ]);
+  // Clients always; coaches and admins only if they've tracked a session.
+  if (!client || (client.role !== "client" && bundles.length === 0)) notFound();
 
-  const csv = buildSummaryCsv((await loadSessionBundles(supabase, clientId)).map(toSummaryRow));
+  const csv = buildSummaryCsv(bundles.map(toSummaryRow));
   return new Response(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",

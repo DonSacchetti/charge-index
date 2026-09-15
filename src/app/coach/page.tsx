@@ -33,9 +33,6 @@ export default async function CoachRoster({ searchParams }: PageProps<"/coach">)
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Link href="/coach/sessions" className="text-[12.5px] font-bold text-navy underline">
-            All sessions
-          </Link>
           <a
             href="/coach/export/sessions.csv"
             className="rounded-[10px] bg-gold px-4 py-[11px] text-[12.5px] font-extrabold text-white hover:bg-gold-deep"
@@ -86,6 +83,11 @@ export default async function CoachRoster({ searchParams }: PageProps<"/coach">)
                       <Link href={`/coach/clients/${c.id}`} className="font-extrabold text-navy underline">
                         {c.name}
                       </Link>
+                      {c.role !== "client" ? (
+                        <span className="ml-2 rounded-full bg-[#f4ecdf] px-[7px] py-[2px] text-[10px] font-extrabold tracking-[0.05em] text-gold-deep uppercase">
+                          {c.role}
+                        </span>
+                      ) : null}
                       <div className="text-[11.5px] text-muted">{c.email ?? "—"}</div>
                     </td>
                     <td className="px-3 py-3 text-body">

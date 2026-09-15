@@ -25,7 +25,8 @@ export default async function CoachClientPage({ params }: PageProps<"/coach/clie
       .order("created_at", { ascending: false }),
   ]);
 
-  if (!client || client.role !== "client") notFound();
+  // Clients always; coaches and admins only if they've tracked a session.
+  if (!client || (client.role !== "client" && bundles.length === 0)) notFound();
 
   const name = client.full_name?.trim() || "Unnamed client";
   const sessionLabel = new Map(bundles.map((b) => [b.session.id, b.session.label || "Untitled session"]));
@@ -42,7 +43,14 @@ export default async function CoachClientPage({ params }: PageProps<"/coach/clie
           <div className="mb-[7px] text-[10px] font-extrabold tracking-[0.15em] text-white/50 uppercase">
             Coach view · not visible to client
           </div>
-          <h1 className="font-serif text-[30px] leading-[1.15] font-semibold">{name}</h1>
+          <h1 className="font-serif text-[30px] leading-[1.15] font-semibold">
+            {name}
+            {client.role !== "client" ? (
+              <span className="ml-3 rounded-full bg-gold px-[9px] py-[3px] align-middle font-sans text-[11px] font-extrabold tracking-[0.06em] text-white uppercase">
+                {client.role}
+              </span>
+            ) : null}
+          </h1>
           <p className="mt-[7px] text-[13.5px] text-white/75">
             {client.email ?? "No email"} · joined {client.created_at.slice(0, 10)} · {bundles.length}{" "}
             {bundles.length === 1 ? "session" : "sessions"}

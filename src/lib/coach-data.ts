@@ -14,7 +14,7 @@ type Db = SupabaseClient<Database>;
 export async function loadRosterData(supabase: Db) {
   const [profiles, sessions, drafts, notes] = await Promise.all([
     fetchAll((from, to) =>
-      supabase.from("profiles").select("id, full_name, email, created_at").eq("role", "client").order("id").range(from, to),
+      supabase.from("profiles").select("id, full_name, email, created_at, role").order("id").range(from, to),
     ),
     fetchAll((from, to) =>
       supabase

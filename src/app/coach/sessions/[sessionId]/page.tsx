@@ -5,6 +5,7 @@ import { ChargeCurve } from "@/components/ChargeCurve";
 import { Card, CoachShell } from "@/components/CoachShell";
 import { type CompareSeries, CompareCurve } from "@/components/coach/CompareCurve";
 import { ConsistencyCard } from "@/components/coach/ConsistencyCard";
+import { DailyLog } from "@/components/coach/DailyLog";
 import { IdealDayCard } from "@/components/coach/IdealDayCard";
 import { InsightsCard } from "@/components/coach/InsightsCard";
 import { ZoneCards } from "@/components/coach/ZoneCards";
@@ -135,6 +136,10 @@ export default async function CoachSessionPage({
         </p>
         <ChargeCurve map={map} windows={windows} dayCount={session.day_count} />
       </Card>
+
+      <div className="mb-5">
+        <DailyLog entries={entries} hours={hours} dayCount={session.day_count} />
+      </div>
 
       <div className="mb-5">
         <InsightsCard

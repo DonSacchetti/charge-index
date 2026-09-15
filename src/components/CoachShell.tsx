@@ -2,13 +2,14 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { signOut } from "@/app/auth/actions";
+import { CoachNav } from "@/components/coach/CoachNav";
 
 /** Desktop-first frame for Jen's side of the app. */
 export function CoachShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-1 flex-col">
       <header className="border-b border-line bg-cream/90 backdrop-blur">
-        <div className="mx-auto flex max-w-[1000px] items-center gap-3 px-6 py-4">
+        <div className="mx-auto flex max-w-[1000px] flex-wrap items-center gap-x-5 gap-y-2 px-6 py-3">
           <Link href="/coach" className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-full bg-navy" />
             <div>
@@ -18,6 +19,7 @@ export function CoachShell({ children }: { children: ReactNode }) {
               <div className="text-[11px] text-muted">Coach view</div>
             </div>
           </Link>
+          <CoachNav />
           <form action={signOut} className="ml-auto">
             <button
               type="submit"

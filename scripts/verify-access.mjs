@@ -171,7 +171,15 @@ try {
   r = await get(`/coach/clients/${alice.id}`, coach);
   expect(r.status === 200 && r.body.includes("Alice paid") && r.body.includes("Coach notes"), "coach opens a client page with sessions and notes");
   r = await get(`/coach/clients/${coach.id}`, coach);
-  expect(r.status === 404, "a coach's own account isn't treated as a client page");
+  expect(r.status === 404, "a coach who hasn't tracked anything has no client page");
+  const tracker = await makeUser("tracker", "admin");
+  await makeSession(tracker.id, "Admin tracks too", peakShape);
+  r = await get("/coach", coach);
+  expect(r.body.includes("access-check-tracker"), "an admin who has tracked a session appears on the roster");
+  r = await get(`/coach/clients/${tracker.id}`, coach);
+  expect(r.status === 200 && r.body.includes("Admin tracks too"), "and has a client page with their sessions");
+  r = await get(`/coach/sessions/${alicePaid}`, coach);
+  expect(r.body.includes("Daily log") && r.body.includes("Clients") && r.body.includes("All sessions"), "coach session page shows the daily log and admin navigation");
   for (const path of [`/coach/clients/${alice.id}`, `/coach/clients/${alice.id}/summary.csv`, `/coach/clients/${alice.id}/sessions.zip`, "/coach/export/sessions.csv", "/coach/sessions"]) {
     r = await get(path, alice);
     expect(r.status === 404, `client gets 404 for ${path.replace(alice.id, "<own id>")}`);
@@ -196,7 +204,7 @@ try {
   expect(loggedTotal === 1120 + 18, `summary counts every entry past the 1,000-row cap (${loggedTotal} of 1138)`);
   r = await get("/coach/export/sessions.csv", coach);
   const allRows = r.body.split("\r\n").filter((l) => l.includes("access-check-") && l.includes(String(stamp)));
-  expect(r.status === 200 && allRows.length === 12, `all-sessions export includes every test session (${allRows.length} of 12)`);
+  expect(r.status === 200 && allRows.length === 13, `all-sessions export includes every test session (${allRows.length} of 13)`);
 } catch (error) {
   fail(`script error: ${error.message}`);
 } finally {
