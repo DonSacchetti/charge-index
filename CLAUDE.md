@@ -6,6 +6,8 @@ Client project for Jen Soenen (Soenen Strategies, a time-management coaching bus
 
 Full product spec, data model, algorithms, and phased build plan: `../Planning/Build Plan.md` (one level up, outside this repo — it's business planning material, not app source). Read that first for anything beyond "how do I run this app."
 
+`README.md` is the public-facing overview. **`HANDOFF.md` is the runbook for handing the project to Jen — keep it current** when accounts, keys, switched-off features or deploy steps change.
+
 ## Stack
 
 Next.js 16 (App Router, Turbopack) + React 19 + TypeScript + Tailwind v4, deployed on Vercel, backed by Supabase (Postgres + Auth), Stripe for payments (not yet wired), Anthropic API for AI insights (not yet wired).
