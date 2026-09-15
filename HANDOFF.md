@@ -94,7 +94,7 @@ To serve the app from `app.soenenstrategies.com`:
 | Reminders | An email provider account, the sender wired in, and the steps at the top of `.github/workflows/reminders.yml` |
 | Peak Plan purchases | Stripe (step 7) |
 
-**Sign-up emails.** Supabase's built-in email sender manages only 2–3 messages an hour, which limits how many people can sign up per hour. Once an email provider exists, point Supabase Authentication's SMTP settings at it.
+**Sign-up emails.** Supabase's built-in email sender manages only 2–3 messages an hour, which limits how many people can sign up per hour, and on the free plan its email wording can't be changed. For now, a new client has to open the confirmation link **in the same browser they signed up in**. Once an email provider exists: point Supabase Authentication's SMTP settings at it, then **(developer)** change the confirmation email's link to `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=email` so it works on any device.
 
 **The free plans.** Vercel's own documentation describes its Hobby plan as for non-commercial, personal use. It's worth deciding before launch whether to move to Pro. Supabase's free plan pauses a database after about a week without activity — a small scheduled job (`.github/workflows/supabase-keepalive.yml`) prevents that; remove it if you upgrade.
 
