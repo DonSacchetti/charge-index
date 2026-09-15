@@ -40,7 +40,7 @@ Phase 3 (session setup / onboarding) is built and verified locally:
 
 **Slot generation differs from the pseudocode in `../Planning/Build Plan.md` Section 3, on purpose.** The Build Plan's `buildSessionSlots()` treats the bedtime hour as inclusive and breaks for bedtimes past midnight. The prototype — which the Build Plan itself names as the reference implementation — excludes the bedtime hour and wraps past midnight. `src/lib/slots.ts` follows the prototype: wake 6am / bed 10pm gives 16 slots, wake 7am / bed 1am gives 18. Both verified live through the real UI.
 
-Phases 4 (daily check-in grid), 5 (weekly map engine + client results) and 6 (coach view) are built, verified and **live in production** since 2026-09-14. Next: Phase 7 (ideal day, streaks, session comparison). Phase 2 (payments) stays deferred until Jen creates the Stripe account.
+Phases 4 (daily check-in grid), 5 (weekly map engine + client results), 6 (coach view) and 7 (ideal day, zone cards, consistency, session comparison) are built, verified and **live in production**. Next: Phase 8 (the Peak Plan deliverable). Phase 2 (payments) stays deferred until Jen creates the Stripe account.
 
 Phase 4 (daily check-in grid), built 2026-09-14 to Jen's prototype and mockups 03–06:
 
@@ -69,6 +69,14 @@ Phase 6 (coach view), built 2026-09-14:
 - **`src/lib/session-data.ts`** — `loadSessionAnalysis()`, shared by the client results screen (which renders only `windows.peak`) and the coach view.
 - **Role routing:** `/`, sign-in and email confirmation send coaches to `/coach` and clients to `/setup`.
 
+Phase 7 (coach analysis), built 2026-09-15 — all on `/coach/sessions/[sessionId]`, logic in `src/lib/coach-analysis.ts` and `src/lib/compare.ts`, components in `src/components/coach/`:
+
+- **Ideal day** — each hour → activity (Deep work · strategy / Meetings · collaboration / Admin · light tasks / Rest · recharge / Untracked), using the prototype's `zoneFromAvg` thresholds ≥88 / ≥62 / ≥22. **These differ from the window bands** (≥90 / 62–90 / <38), both from the prototype, so an hour can be inside the recovery window while the ideal day calls it admin time. Kept faithful and flagged for Jen, not reconciled.
+- **Zone cards** — the three hours most often in each zone (raw entries: 100 / 75 / 50–25 / 10); ties break by position in the day.
+- **Consistency** — days complete, longest back-to-back run, hours covered, per-day bars. Not in the prototype's coach view; built to the Build Plan's "completion streaks". Sits where the dropped burnout gauge was.
+- **Compare sessions** — shown when a client has 2+ sessions: this one plus up to three recent others on a shared axis (union of waking hours, day-ordered past midnight), plus each session's windows in a table. Series differ by colour and dash.
+- Zone shading shared via `src/lib/chart.ts`. 29 unit tests total.
+
 **Making someone a coach.** Signup always creates a client — `handle_new_user` never reads a role from signup metadata, and clients can't change their own role (see Security). Jen should sign up at `/signup` with her own email and password (don't create her account for her), then promote her through the Management API's SQL endpoint with `SUPABASE_ACCESS_TOKEN`:
 
 ```sql
@@ -93,6 +101,8 @@ Free-tier projects pause after about a week without activity. This one was found
 **Keep-alive:** `.github/workflows/supabase-keepalive.yml` queries the database through the REST API every three days (repo secrets `SUPABASE_URL`, `SUPABASE_ANON_KEY`). If the project is already paused the run fails and GitHub emails the repo owner — a ping can't un-pause it. Manual run: `gh workflow run supabase-keepalive.yml`. Remove it if the project moves to a paid Supabase plan.
 
 ## Verified how
+
+**Phase 7:** 29/29 unit tests, lint/types/build clean. Seeded a client with three sessions (Spring from Jen's demo data; Summer with a later peak; Fall in progress with a 1 AM bedtime, days 1, 2 and 4 complete and day 3 partial) and a single-session client. Predicted the Fall consistency by hand — 3 of 7 complete, longest streak 2, 48% covered, day 3 at 7/19 — and the page matched exactly, locally and on production. Comparison showed three sessions oldest first on a 19-hour shared axis, with windows Spring 9 AM – 12 PM / Summer 12 PM – 4 PM / Fall 8 AM – 10 AM and Fall's recovery 7 PM – 1 AM across midnight; the single-session client showed no comparison card. No server errors. Test data deleted.
 
 **Phase 6:** `tsc`, `eslint`, `next build`, `npm audit` clean; 16/16 unit tests; `scripts/verify-rls.mjs` 27/27. Seeded a coach, a completed client built from Jen's prototype demo data and reflections (some hours skipped on some days, 9 PM skipped every day), and a sparse in-progress client with a 1 AM bedtime. Locally and then on production: the coach landed on `/coach` with both clients and correct hour counts; the completed session showed windows 9 AM – 12 PM / 3–5 PM / 6–9 PM (matching the Phase 5 Postgres parity check), 12 filled dots and 3 hollow `n=4` rings on exactly the partially skipped hours, a gap at 9 PM, and the reflections. The sparse session showed recovery 11 PM – 1 AM joined across midnight and "—" for the empty windows. Signed in as the client: landed on `/setup`, no coach link, all coach URLs 404 with no analysis or reflection text in the response, while their results screen still showed only the peak window. Test accounts deleted.
 
