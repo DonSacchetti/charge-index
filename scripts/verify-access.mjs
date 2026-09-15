@@ -148,6 +148,10 @@ try {
   console.log("\nCoach");
   r = await get("/coach", coach);
   expect(r.status === 200 && r.body.includes("Alice paid") && r.body.includes("Bob pending"), "coach list shows every client's sessions");
+  r = await get(`/coach/sessions/${alicePaid}`, coach);
+  expect(r.status === 200 && r.body.includes("Charge curve") && r.body.includes("Draft insights"), "coach session page renders the analysis and insights panel");
+  r = await get(`/coach/sessions/${alicePaid}`, alice);
+  expect(r.status === 404 && !r.body.includes("Draft insights"), "client can't open the coach session page for their own session");
   r = await get(`/plan/${bobSession}`, coach);
   expect(r.status === 200, "coach opens any plan, purchased or not");
   r = await get(`/coach/sessions/${alicePaid}/export.csv`, coach);
