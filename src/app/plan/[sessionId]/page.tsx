@@ -123,7 +123,7 @@ export default async function PeakPlanPage({ params }: PageProps<"/plan/[session
                 {meta.map((m) => (
                   <div key={m.k} className="flex justify-between gap-3 border-b border-navy/8 pb-2 text-[12.5px]">
                     <dt className="text-muted">{m.k}</dt>
-                    <dd className="m-0 text-right font-extrabold text-navy">{m.v}</dd>
+                    <dd className="m-0 min-w-0 text-right font-extrabold text-navy wrap-anywhere">{m.v}</dd>
                   </div>
                 ))}
               </dl>

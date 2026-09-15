@@ -22,7 +22,7 @@ export function AppShell({ subtitle, badge, progress, children }: Props) {
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-1 flex-col bg-white shadow-[0_0_60px_rgba(19,36,73,0.08)] sm:my-8 sm:min-h-0 sm:rounded-3xl sm:overflow-hidden">
       <header className="bg-navy px-5 pt-5 pb-4 text-white">
         <div className="flex items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0 wrap-anywhere">
             <div className="font-serif text-[19px] leading-none font-semibold">
               Charge Index<sup className="text-[10px]">™</sup>
             </div>

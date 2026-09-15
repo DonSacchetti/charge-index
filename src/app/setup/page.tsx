@@ -55,7 +55,7 @@ export default async function SetupPage() {
                     href={done ? `/track/${s.id}/complete` : `/track/${s.id}`}
                     className="flex items-center justify-between gap-3 text-[13.5px] font-bold text-navy underline"
                   >
-                    <span>{s.label ?? "Untitled session"}</span>
+                    <span className="min-w-0 wrap-anywhere">{s.label ?? "Untitled session"}</span>
                     <span className="text-[11px] font-semibold text-muted no-underline">
                       {done ? "Complete" : "In progress"} · {s.day_count} days
                     </span>
@@ -85,7 +85,7 @@ export default async function SetupPage() {
         <form action={signOut} className="mt-5 text-center">
           <button
             type="submit"
-            className="text-[12px] font-bold text-muted underline"
+            className="inline-flex min-h-11 items-center px-3 text-[12px] font-bold text-muted underline"
           >
             Sign out
           </button>

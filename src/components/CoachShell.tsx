@@ -19,7 +19,10 @@ export function CoachShell({ children }: { children: ReactNode }) {
             </div>
           </Link>
           <form action={signOut} className="ml-auto">
-            <button type="submit" className="text-[12px] font-bold text-muted underline">
+            <button
+              type="submit"
+              className="-mx-2 inline-flex min-h-11 items-center px-2 text-[12px] font-bold text-muted underline"
+            >
               Sign out
             </button>
           </form>

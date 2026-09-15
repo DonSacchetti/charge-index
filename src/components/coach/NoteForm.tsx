@@ -38,7 +38,9 @@ export function NoteForm({
       </div>
       <div className="flex flex-wrap items-end gap-3">
         {sessions.length ? (
-          <div>
+          // min-w-0 + max-w-full: a <select> sizes itself to its longest option,
+          // so a long session label would otherwise push the page wider than a phone.
+          <div className="min-w-0 max-w-full">
             <label htmlFor="note-session" className="mb-[5px] block text-[10.5px] font-extrabold tracking-[0.07em] text-navy uppercase">
               About
             </label>
@@ -46,7 +48,7 @@ export function NoteForm({
               id="note-session"
               name="session_id"
               defaultValue=""
-              className="rounded-[11px] border-[1.5px] border-line bg-white px-[10px] py-[9px] text-[13px] text-ink outline-none focus:border-navy"
+              className="w-full max-w-full truncate rounded-[11px] border-[1.5px] border-line bg-white px-[10px] py-[9px] text-[13px] text-ink outline-none focus:border-navy sm:w-auto sm:max-w-sm"
             >
               <option value="">The client overall</option>
               {sessions.map((s) => (

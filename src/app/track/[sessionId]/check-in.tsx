@@ -57,6 +57,20 @@ export function CheckIn({
   const [day, setDay] = useState(initialDay);
   const [openHour, setOpenHour] = useState<number | null>(null);
   const [finishing, startFinishing] = useTransition();
+  const tabStrip = useRef<HTMLDivElement>(null);
+
+  // Keep the active day's tab visible. On a 6–7 day session the later tabs
+  // start off-screen on a phone, so day 7 would otherwise open with its own
+  // tab hidden. Adjusts only the strip's scroll, never the page's.
+  useEffect(() => {
+    const strip = tabStrip.current;
+    const tab = strip?.querySelector<HTMLElement>('[aria-current="step"]');
+    if (!strip || !tab) return;
+    const left = tab.offsetLeft; // the strip is position: relative, so this is strip-relative
+    const right = left + tab.offsetWidth;
+    if (left < strip.scrollLeft) strip.scrollTo({ left: left - 18 });
+    else if (right > strip.scrollLeft + strip.clientWidth) strip.scrollTo({ left: right - strip.clientWidth + 18 });
+  }, [day]);
 
   // Latest notes, read by the debounced writer so it never sends stale text.
   const daysRef = useRef(days);
@@ -191,7 +205,10 @@ export function CheckIn({
       progress={{ total: dayCount + 2, current: dayNumber }}
     >
       {/* Day tabs */}
-      <div className="flex gap-[7px] overflow-x-auto border-b border-line bg-white px-[18px] pt-[14px] pb-3">
+      <div
+        ref={tabStrip}
+        className="relative flex gap-[7px] overflow-x-auto border-b border-line bg-white px-[18px] pt-[14px] pb-3"
+      >
         {days.map((d, i) => {
           const done = isComplete(d, slotCount);
           const active = i === day;

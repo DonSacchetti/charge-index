@@ -45,4 +45,9 @@ body {
   background: var(--color-cream);
   color: var(--color-ink);
   font-family: var(--font-nunito), system-ui, sans-serif;
+  /* Clients and coaches type free text — reflections, notes, labels, names.
+     An unbroken string (a pasted URL) would otherwise overflow its box, and
+     mobile browsers zoom the whole page out to fit it. break-word only breaks
+     a string that can't fit, and doesn't change how tables or flex items size. */
+  overflow-wrap: break-word;
 }

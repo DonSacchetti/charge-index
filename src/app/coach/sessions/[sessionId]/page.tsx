@@ -69,7 +69,7 @@ export default async function CoachSessionPage({
       </Link>
 
       <div className="mt-3 mb-5 flex flex-wrap items-end justify-between gap-5 rounded-[20px] bg-[linear-gradient(150deg,#0b1533,#132449_65%,#24417e)] px-[30px] py-7 text-white">
-        <div>
+        <div className="min-w-0 wrap-anywhere">
           <div className="mb-[7px] text-[10px] font-extrabold tracking-[0.15em] text-white/50 uppercase">
             Coach view · not visible to client
           </div>

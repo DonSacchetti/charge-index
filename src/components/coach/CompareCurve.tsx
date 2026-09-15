@@ -132,7 +132,7 @@ export function CompareCurve({ axis, series }: { axis: number[]; series: Compare
         {series.map((s, i) => {
           const st = styleFor(series, i);
           return (
-            <span key={s.id} className="flex items-center gap-2">
+            <span key={s.id} className="flex min-w-0 items-center gap-2 wrap-anywhere">
               <svg width="28" height="8" aria-hidden>
                 <line x1="1" x2="27" y1="4" y2="4" stroke={st.color} strokeWidth={st.width} strokeDasharray={st.dash} strokeLinecap="round" />
               </svg>

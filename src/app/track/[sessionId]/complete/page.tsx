@@ -71,7 +71,7 @@ export default async function CompletePage({
                 className="flex items-baseline justify-between gap-3 border-b border-[#f0efea] pb-[9px]"
               >
                 <span className="text-[12.5px] text-body">{s.label}</span>
-                <span className="text-right text-[13px] font-extrabold text-navy">{s.value}</span>
+                <span className="min-w-0 text-right text-[13px] font-extrabold text-navy wrap-anywhere">{s.value}</span>
               </div>
             ))}
           </div>
