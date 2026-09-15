@@ -64,8 +64,8 @@ export default async function CoachSessionPage({
 
   return (
     <CoachShell>
-      <Link href="/coach" className="text-[12px] font-bold text-muted underline">
-        ← All sessions
+      <Link href={`/coach/clients/${session.client_id}`} className="text-[12px] font-bold text-muted underline">
+        ← {clientName || "Client"}
       </Link>
 
       <div className="mt-3 mb-5 flex flex-wrap items-end justify-between gap-5 rounded-[20px] bg-[linear-gradient(150deg,#0b1533,#132449_65%,#24417e)] px-[30px] py-7 text-white">

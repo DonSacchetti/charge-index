@@ -17,6 +17,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
+import { unzipSync, strFromU8 } from "fflate";
 
 const BASE = (process.argv[2] || "http://localhost:3000").replace(/\/$/, "");
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -57,16 +58,18 @@ async function makeUser(tag, role = "client") {
   return { id: data.user.id, email, cookie };
 }
 
-async function makeSession(clientId, label, shape) {
+async function makeSession(clientId, label, shape, { wake = 8, days = 3, dayCount = 5 } = {}) {
+  const sleep = (wake + shape.length) % 24;
   const { data: s, error } = await admin
     .from("tracking_sessions")
-    .insert({ client_id: clientId, label, wake_time: "08:00", sleep_time: "14:00", day_count: 5, status: "completed" })
+    .insert({ client_id: clientId, label, wake_time: `${String(wake).padStart(2, "0")}:00`, sleep_time: `${String(sleep).padStart(2, "0")}:00`, day_count: dayCount, status: "completed" })
     .select("id")
     .single();
   if (error) throw new Error(`session ${label}: ${error.message}`);
   const rows = [];
-  for (let d = 1; d <= 3; d++) shape.forEach((pct, i) => rows.push({ session_id: s.id, day_number: d, slot_hour: `${String(8 + i).padStart(2, "0")}:00`, energy_pct: pct }));
-  await admin.from("daily_entries").insert(rows);
+  for (let d = 1; d <= days; d++) shape.forEach((pct, i) => rows.push({ session_id: s.id, day_number: d, slot_hour: `${String((wake + i) % 24).padStart(2, "0")}:00`, energy_pct: pct }));
+  const { error: insertError } = await admin.from("daily_entries").insert(rows);
+  if (insertError) throw new Error(`entries ${label}: ${insertError.message}`);
   return s.id;
 }
 
@@ -146,8 +149,8 @@ try {
   expect(r.status === 404, "client can't open the coach list");
 
   console.log("\nCoach");
-  r = await get("/coach", coach);
-  expect(r.status === 200 && r.body.includes("Alice paid") && r.body.includes("Bob pending"), "coach list shows every client's sessions");
+  r = await get("/coach/sessions", coach);
+  expect(r.status === 200 && r.body.includes("Alice paid") && r.body.includes("Alice unpaid") && r.body.includes("Bob pending"), "all-sessions list shows every client's sessions");
   r = await get(`/coach/sessions/${alicePaid}`, coach);
   expect(r.status === 200 && r.body.includes("Charge curve") && r.body.includes("Draft insights"), "coach session page renders the analysis and insights panel");
   r = await get(`/coach/sessions/${alicePaid}`, alice);
@@ -158,6 +161,42 @@ try {
   expect(r.status === 200 && r.type.startsWith("text/csv") && r.body.startsWith("﻿"), "coach downloads the CSV");
   expect(r.body.includes(alice.email), "CSV carries the client's email");
   if (process.env.VERIFY_OUT_DIR) writeFileSync(join(process.env.VERIFY_OUT_DIR, "session.csv"), r.bytes);
+  const singleCsv = r.bytes;
+
+  console.log("\nRoster and client pages");
+  r = await get("/coach", coach);
+  expect(r.status === 200 && r.body.includes("Clients") && r.body.includes("access-check-alice"), "coach roster lists clients with emails");
+  r = await get("/coach?q=carol", coach);
+  expect(r.body.includes("access-check-carol") && !r.body.includes("access-check-bob"), "roster search filters by name or email");
+  r = await get(`/coach/clients/${alice.id}`, coach);
+  expect(r.status === 200 && r.body.includes("Alice paid") && r.body.includes("Coach notes"), "coach opens a client page with sessions and notes");
+  r = await get(`/coach/clients/${coach.id}`, coach);
+  expect(r.status === 404, "a coach's own account isn't treated as a client page");
+  for (const path of [`/coach/clients/${alice.id}`, `/coach/clients/${alice.id}/summary.csv`, `/coach/clients/${alice.id}/sessions.zip`, "/coach/export/sessions.csv", "/coach/sessions"]) {
+    r = await get(path, alice);
+    expect(r.status === 404, `client gets 404 for ${path.replace(alice.id, "<own id>")}`);
+  }
+
+  console.log("\nBulk exports");
+  r = await get(`/coach/clients/${alice.id}/sessions.zip`, coach);
+  expect(r.status === 200 && r.type === "application/zip", "per-client ZIP downloads");
+  const zipped = unzipSync(new Uint8Array(r.bytes));
+  const names = Object.keys(zipped);
+  expect(names.length === 2, `ZIP holds one CSV per session (${names.length})`);
+  const paidFile = names.find((n) => n.includes("Alice_paid"));
+  expect(!!paidFile && Buffer.from(zipped[paidFile]).equals(singleCsv), "a CSV inside the ZIP is byte-identical to the single-session download");
+
+  // Past the API's 1,000-row default: 8 sessions × 7 days × 20 hours = 1,120 entries.
+  const bulkShape = Array.from({ length: 20 }, (_, i) => [100, 75, 50, 25, 10][i % 5]);
+  for (let i = 1; i <= 8; i++) await makeSession(bob.id, `Bulk ${i}`, bulkShape, { wake: 4, days: 7, dayCount: 7 });
+  r = await get(`/coach/clients/${bob.id}/summary.csv`, coach);
+  const rows = r.body.replace(/^\uFEFF/, "").trimEnd().split("\r\n").slice(1).map((l) => l.match(/"((?:[^"]|"")*)"/g).map((c) => c.slice(1, -1)));
+  const loggedTotal = rows.reduce((sum, cells) => sum + Number(cells[7]), 0);
+  expect(r.status === 200 && rows.length === 9, `client summary CSV has a row per session (${rows.length})`);
+  expect(loggedTotal === 1120 + 18, `summary counts every entry past the 1,000-row cap (${loggedTotal} of 1138)`);
+  r = await get("/coach/export/sessions.csv", coach);
+  const allRows = r.body.split("\r\n").filter((l) => l.includes("access-check-") && l.includes(String(stamp)));
+  expect(r.status === 200 && allRows.length === 12, `all-sessions export includes every test session (${allRows.length} of 12)`);
 } catch (error) {
   fail(`script error: ${error.message}`);
 } finally {

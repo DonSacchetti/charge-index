@@ -46,11 +46,32 @@ export async function loadSessionAnalysis(
   ]);
 
   if (!session) return null;
+  return {
+    session,
+    clientName: session.profiles?.full_name ?? null,
+    ...analyseSession(session, rows ?? [], notes ?? []),
+  };
+}
 
+type SessionShape = { wake_time: string; sleep_time: string };
+type EntryRow = { day_number: number; slot_hour: string; energy_pct: number };
+type NoteRow = {
+  day_number: number;
+  feel_note: string | null;
+  unexpected_note: string | null;
+  for_jen_note: string | null;
+};
+
+/**
+ * The analysis itself, from rows already loaded. Shared by the per-session
+ * loader above and the bulk exports, which load rows for many sessions at
+ * once — so a session's numbers are identical wherever they appear.
+ */
+export function analyseSession(session: SessionShape, rows: EntryRow[], notes: NoteRow[]) {
   const wake = hourOf(session.wake_time);
   const sleep = hourOf(session.sleep_time);
   const hours = buildSessionSlots(wake, sleep).map(hourOf);
-  const entries: Entry[] = (rows ?? []).map((e) => ({
+  const entries: Entry[] = rows.map((e) => ({
     dayNumber: e.day_number,
     hour: hourOf(e.slot_hour),
     pct: e.energy_pct,
@@ -58,7 +79,8 @@ export async function loadSessionAnalysis(
   const map: HourAverage[] = computeWeeklyMap(entries, hours);
   const windows: Windows = findWindows(map);
 
-  const reflections: Reflection[] = (notes ?? [])
+  const reflections: Reflection[] = [...notes]
+    .sort((a, b) => a.day_number - b.day_number)
     .map((n) => ({
       dayNumber: n.day_number,
       feel: n.feel_note,
@@ -67,15 +89,5 @@ export async function loadSessionAnalysis(
     }))
     .filter((r) => r.feel || r.unexpected || r.forJen);
 
-  return {
-    session,
-    clientName: session.profiles?.full_name ?? null,
-    wake,
-    sleep,
-    hours,
-    entries,
-    map,
-    windows,
-    reflections,
-  };
+  return { wake, sleep, hours, entries, map, windows, reflections };
 }

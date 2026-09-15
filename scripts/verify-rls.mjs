@@ -124,6 +124,20 @@ try {
   expect(denied(await alice.db.from("ai_insights").update({ energy_type: "forged" }).eq("session_id", aliceSession)) || (await admin.from("ai_insights").select("energy_type").eq("session_id", aliceSession).single()).data?.energy_type === "coach draft", "client still cannot change AI insights");
   expect(denied(await coach.db.from("daily_entries").insert({ session_id: aliceSession, day_number: 3, slot_hour: "11:00", energy_pct: 50 })), "coach cannot write a client's entries");
   expect(denied(await coach.db.from("profiles").update({ role: "admin" }).eq("id", coach.id)), "coach cannot change roles either");
+
+  console.log("\nCoach notes");
+  const coach2 = await makeUser("coach2", "coach");
+  const { data: note, error: noteError } = await coach.db.from("coach_notes").insert({ client_id: alice.id, body: "Private note about alice" }).select("id, author_id").single();
+  expect(!noteError && note?.author_id === coach.id, "coach can write a note, stamped with their own id");
+  expect(denied(await coach.db.from("coach_notes").insert({ client_id: alice.id, author_id: coach2.id, body: "forged author" })), "coach cannot write a note as another coach");
+  expect((await count(coach2.db, "coach_notes", "client_id", alice.id)) === 1, "another coach can read the note");
+  await coach2.db.from("coach_notes").delete().eq("id", note.id);
+  await coach2.db.from("coach_notes").update({ body: "tampered" }).eq("id", note.id);
+  const { data: noteAfter } = await admin.from("coach_notes").select("body").eq("id", note.id).single();
+  expect(noteAfter?.body === "Private note about alice", "another coach cannot edit or delete it");
+  expect((await count(alice.db, "coach_notes", "client_id", alice.id)) === 0, "the client cannot read notes about themselves");
+  expect(denied(await alice.db.from("coach_notes").insert({ client_id: alice.id, body: "client note" })), "a client cannot write coach notes");
+  expect(!(await coach.db.from("coach_notes").delete().eq("id", note.id)).error && (await count(admin, "coach_notes", "id", note.id)) === 0, "the author can delete their note");
 } catch (error) {
   fail(`script error: ${error.message}`);
 } finally {
