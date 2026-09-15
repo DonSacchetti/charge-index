@@ -3,8 +3,12 @@ import { createServerClient } from "@supabase/ssr";
 
 import type { Database } from "@/lib/database.types";
 
-/** Routes a signed-out visitor may reach. Everything else redirects to /login. */
-const PUBLIC_PATHS = ["/", "/login", "/signup", "/auth"];
+/**
+ * Routes a signed-out visitor may reach. Everything else redirects to /login.
+ * /api/cron is machine-to-machine: it has no session and authenticates with
+ * its own secret instead (see src/app/api/cron/reminders/route.ts).
+ */
+const PUBLIC_PATHS = ["/", "/login", "/signup", "/auth", "/api/cron"];
 
 function isPublic(pathname: string) {
   return PUBLIC_PATHS.some(

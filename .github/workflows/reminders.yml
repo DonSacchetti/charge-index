@@ -1,0 +1,49 @@
+# Hourly reminder run — Build Plan Phase 11.
+#
+# Calls the app's /api/cron/reminders endpoint, which works out which clients
+# are due a nudge in their own timezone and sends it. GitHub Actions, not a
+# Vercel cron: Vercel's Hobby plan only allows cron jobs once a day, and
+# reminders can be hourly.
+#
+# NOT SWITCHED ON. There's no email provider yet, so the endpoint can only do
+# a dry run. To switch on, once a transactional email account exists under
+# Jen's identity and a sender is wired into src/app/api/cron/reminders:
+#   1. Vercel production env: CRON_SECRET (a long random string, sensitive),
+#      SUPABASE_SERVICE_ROLE_KEY (sensitive), APP_URL, and the provider's key
+#   2. GitHub repo secrets: CRON_SECRET (same value) and APP_URL
+#   3. Uncomment the schedule below
+# Until then it can be run by hand from the Actions tab to see a dry run.
+
+name: Reminders
+
+on:
+  # schedule:
+  #   - cron: "2 * * * *"   # every hour, a couple of minutes past
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: reminders
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger the reminder run
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::error::APP_URL and CRON_SECRET repo secrets are required."
+            exit 1
+          fi
+          status=$(curl --silent --output response.json --write-out "%{http_code}" --max-time 240 \
+            --request POST --header "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/reminders")
+          echo "HTTP $status"
+          # Report counts only — the body lists client emails, which shouldn't land in public Actions logs.
+          node -e 'const r=require("./response.json"); console.log(JSON.stringify({sender:r.sender,sessionsChecked:r.sessionsChecked,planned:r.planned,sent:r.sent,skippedAlreadySent:r.skippedAlreadySent,failed:r.failed,error:r.error}))'
+          [ "$status" = "200" ]

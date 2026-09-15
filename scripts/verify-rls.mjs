@@ -138,6 +138,13 @@ try {
   expect((await count(alice.db, "coach_notes", "client_id", alice.id)) === 0, "the client cannot read notes about themselves");
   expect(denied(await alice.db.from("coach_notes").insert({ client_id: alice.id, body: "client note" })), "a client cannot write coach notes");
   expect(!(await coach.db.from("coach_notes").delete().eq("id", note.id)).error && (await count(admin, "coach_notes", "id", note.id)) === 0, "the author can delete their note");
+
+  console.log("\nReminder log");
+  await admin.from("reminder_log").insert({ session_id: aliceSession, day_number: 1, reminder_key: "rls-check" });
+  expect((await count(coach.db, "reminder_log", "session_id", aliceSession)) === 1, "coach can read the reminder log");
+  expect((await count(alice.db, "reminder_log", "session_id", aliceSession)) === 0, "client cannot read the reminder log, even for their own session");
+  expect(denied(await alice.db.from("reminder_log").insert({ session_id: aliceSession, day_number: 2, reminder_key: "forged" })), "client cannot write the reminder log");
+  expect(denied(await coach.db.from("reminder_log").insert({ session_id: aliceSession, day_number: 2, reminder_key: "forged" })), "coach cannot write the reminder log either (server-only)");
 } catch (error) {
   fail(`script error: ${error.message}`);
 } finally {

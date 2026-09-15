@@ -280,6 +280,38 @@ export type Database = {
           },
         ]
       }
+      reminder_log: {
+        Row: {
+          day_number: number
+          id: string
+          reminder_key: string
+          sent_at: string
+          session_id: string
+        }
+        Insert: {
+          day_number: number
+          id?: string
+          reminder_key: string
+          sent_at?: string
+          session_id: string
+        }
+        Update: {
+          day_number?: number
+          id?: string
+          reminder_key?: string
+          sent_at?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminder_log_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "tracking_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       session_analysis: {
         Row: {
           computed_at: string
@@ -320,6 +352,7 @@ export type Database = {
           sleep_time: string
           start_date: string
           status: Database["public"]["Enums"]["session_status"]
+          timezone: string | null
           wake_time: string
         }
         Insert: {
@@ -332,6 +365,7 @@ export type Database = {
           sleep_time: string
           start_date?: string
           status?: Database["public"]["Enums"]["session_status"]
+          timezone?: string | null
           wake_time: string
         }
         Update: {
@@ -344,6 +378,7 @@ export type Database = {
           sleep_time?: string
           start_date?: string
           status?: Database["public"]["Enums"]["session_status"]
+          timezone?: string | null
           wake_time?: string
         }
         Relationships: [

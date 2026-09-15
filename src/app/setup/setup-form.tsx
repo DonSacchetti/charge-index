@@ -52,6 +52,8 @@ export function SetupForm({
           "local_date",
           `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
         );
+        // And their timezone, so reminders can fire at their own clock times.
+        formData.set("timezone", Intl.DateTimeFormat().resolvedOptions().timeZone ?? "");
         formAction(formData);
       }}
     >

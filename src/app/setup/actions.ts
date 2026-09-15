@@ -29,6 +29,22 @@ function startDate(raw: FormDataEntryValue | null): string | undefined {
 
 const VALID_REMINDERS = new Set<string>(REMINDERS.map((r) => r.value));
 
+/**
+ * An IANA timezone name from the browser ("America/Toronto"), accepted only if
+ * this runtime recognises it. Anything else stores null — the reminder engine
+ * skips a session with no timezone rather than guess at the client's clock.
+ */
+function timezone(raw: FormDataEntryValue | null): string | null {
+  const value = typeof raw === "string" ? raw.trim() : "";
+  if (!value || value.length > 64) return null;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value });
+    return value;
+  } catch {
+    return null;
+  }
+}
+
 export async function createSession(
   _prev: SetupState,
   formData: FormData,
@@ -79,6 +95,7 @@ export async function createSession(
       day_count: dayCount,
       reminder_pref: reminder as ReminderPref,
       start_date: startDate(formData.get("local_date")),
+      timezone: timezone(formData.get("timezone")),
     })
     .select("id")
     .single();

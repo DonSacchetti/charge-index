@@ -17,7 +17,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { unzipSync, strFromU8 } from "fflate";
+import { unzipSync } from "fflate";
 
 const BASE = (process.argv[2] || "http://localhost:3000").replace(/\/$/, "");
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
