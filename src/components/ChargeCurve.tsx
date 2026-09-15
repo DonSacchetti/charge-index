@@ -1,4 +1,5 @@
 import { nearestTier, scaleOf } from "@/lib/charge";
+import { ZONE_BANDS } from "@/lib/chart";
 import { formatHour } from "@/lib/slots";
 import type { HourAverage, Windows } from "@/lib/weekly-map";
 
@@ -17,18 +18,6 @@ const PLOT_H = H - M.top - M.bottom;
 
 const NAVY = "#132449";
 const MUTED = "#8a8aa0";
-
-/**
- * Zone bands split halfway between tiers — the same boundaries nearestTier()
- * uses to colour a point, so a dot's colour always matches the band it's in.
- */
-const BANDS = [
-  { value: 100, from: 87.5, to: 100 },
-  { value: 75, from: 62.5, to: 87.5 },
-  { value: 50, from: 37.5, to: 62.5 },
-  { value: 25, from: 17.5, to: 37.5 },
-  { value: 10, from: 0, to: 17.5 },
-];
 
 const WINDOW_STYLE = {
   peak: { color: "#2f7d52", label: "Peak" },
@@ -95,7 +84,7 @@ export function ChargeCurve({ map, windows, dayCount }: Props) {
           <desc id="curve-desc">{summary}</desc>
 
           {/* Zone shading */}
-          {BANDS.map((b) => {
+          {ZONE_BANDS.map((b) => {
             const s = scaleOf(b.value);
             return (
               <g key={b.value}>

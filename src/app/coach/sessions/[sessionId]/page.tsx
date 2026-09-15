@@ -3,6 +3,12 @@ import { notFound } from "next/navigation";
 
 import { ChargeCurve } from "@/components/ChargeCurve";
 import { Card, CoachShell } from "@/components/CoachShell";
+import { type CompareSeries, CompareCurve } from "@/components/coach/CompareCurve";
+import { ConsistencyCard } from "@/components/coach/ConsistencyCard";
+import { IdealDayCard } from "@/components/coach/IdealDayCard";
+import { ZoneCards } from "@/components/coach/ZoneCards";
+import { consistency, idealDay, zoneTopHours } from "@/lib/coach-analysis";
+import { alignToAxis, compareAxis } from "@/lib/compare";
 import { loadSessionAnalysis } from "@/lib/session-data";
 import { formatHour } from "@/lib/slots";
 import { requireCoach } from "@/lib/viewer";
@@ -42,8 +48,34 @@ export default async function CoachSessionPage({
   const data = await loadSessionAnalysis(supabase, sessionId);
   if (!data) notFound();
 
-  const { session, clientName, wake, sleep, map, windows, entries, reflections } = data;
+  const { session, clientName, wake, sleep, hours, map, windows, entries, reflections } = data;
   const hasData = entries.length > 0;
+
+  // Pattern comparison: this session plus up to three of the client's most
+  // recent others, shown oldest first.
+  const { data: siblings } = await supabase
+    .from("tracking_sessions")
+    .select("id")
+    .eq("client_id", session.client_id)
+    .neq("id", session.id)
+    .order("created_at", { ascending: false })
+    .limit(3);
+  const others = (
+    await Promise.all((siblings ?? []).map((s) => loadSessionAnalysis(supabase, s.id)))
+  ).filter((o): o is NonNullable<typeof o> => o !== null);
+  const compared = [data, ...others].sort(
+    (a, b) =>
+      a.session.start_date.localeCompare(b.session.start_date) ||
+      a.session.created_at.localeCompare(b.session.created_at),
+  );
+  const axis = compareAxis(compared.map((c) => c.map));
+  const series: CompareSeries[] = compared.map((c) => ({
+    id: c.session.id,
+    label: c.session.label || "Untitled session",
+    startDate: c.session.start_date,
+    values: alignToAxis(c.map, axis),
+    current: c.session.id === session.id,
+  }));
 
   return (
     <CoachShell>
@@ -102,6 +134,58 @@ export default async function CoachSessionPage({
         </p>
         <ChargeCurve map={map} windows={windows} dayCount={session.day_count} />
       </Card>
+
+      <div className="mb-5 grid gap-5 lg:grid-cols-2">
+        <ConsistencyCard data={consistency(entries, hours, session.day_count)} hoursPerDay={hours.length} />
+        <IdealDayCard day={idealDay(map)} />
+      </div>
+
+      <div className="mb-5">
+        <ZoneCards top={zoneTopHours(entries, hours)} />
+      </div>
+
+      {compared.length > 1 ? (
+        <Card className="mb-5">
+          <h2 className="mb-1 font-serif text-[18px] font-semibold text-navy">Compare sessions</h2>
+          <p className="mb-4 text-[12px] leading-normal text-muted">
+            How this client&rsquo;s average charge has shifted between sessions.
+          </p>
+          <CompareCurve axis={axis} series={series} />
+          <div className="mt-5 overflow-x-auto">
+            <table className="w-full min-w-[560px] border-collapse text-left text-[12.5px]">
+              <thead>
+                <tr className="border-b border-line text-[10px] font-extrabold tracking-[0.08em] text-muted uppercase">
+                  <th className="py-2 pr-3">Session</th>
+                  <th className="py-2 pr-3">Hours logged</th>
+                  <th className="py-2 pr-3">Peak</th>
+                  <th className="py-2 pr-3">Collaboration</th>
+                  <th className="py-2">Recovery</th>
+                </tr>
+              </thead>
+              <tbody>
+                {compared.map((c) => (
+                  <tr key={c.session.id} className="border-b border-[#f0efea] last:border-b-0">
+                    <td className="py-2 pr-3">
+                      {c.session.id === session.id ? (
+                        <span className="font-extrabold text-navy">{c.session.label || "Untitled session"}</span>
+                      ) : (
+                        <Link href={`/coach/sessions/${c.session.id}`} className="font-bold text-navy underline">
+                          {c.session.label || "Untitled session"}
+                        </Link>
+                      )}
+                      <span className="ml-2 text-muted">{c.session.start_date}</span>
+                    </td>
+                    <td className="py-2 pr-3 text-body">{c.entries.length}</td>
+                    <td className="py-2 pr-3 text-body">{formatWindow(c.windows.peak)}</td>
+                    <td className="py-2 pr-3 text-body">{formatWindow(c.windows.collaboration)}</td>
+                    <td className="py-2 text-body">{formatWindow(c.windows.recovery)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      ) : null}
 
       {reflections.length > 0 ? (
         <Card>
