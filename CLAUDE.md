@@ -40,7 +40,7 @@ Phase 3 (session setup / onboarding) is built and verified locally:
 
 **Slot generation differs from the pseudocode in `../Planning/Build Plan.md` Section 3, on purpose.** The Build Plan's `buildSessionSlots()` treats the bedtime hour as inclusive and breaks for bedtimes past midnight. The prototype — which the Build Plan itself names as the reference implementation — excludes the bedtime hour and wraps past midnight. `src/lib/slots.ts` follows the prototype: wake 6am / bed 10pm gives 16 slots, wake 7am / bed 1am gives 18. Both verified live through the real UI.
 
-Phases 4 (daily check-in grid), 5 (weekly map engine + client results), 6 (coach view) and 7 (ideal day, zone cards, consistency, session comparison) are built, verified and **live in production**. Next: Phase 8 (the Peak Plan deliverable). Phase 2 (payments) stays deferred until Jen creates the Stripe account.
+Phases 4 (daily check-in grid), 5 (weekly map engine + client results), 6 (coach view), 7 (ideal day, zone cards, consistency, session comparison) and 8 (the Peak Plan, calendar file, CSV export) are built, verified and **live in production**. Next: Phase 9 (AI insights) — needs an Anthropic API key under Jen's account, which doesn't exist yet. Phase 2 (payments) stays deferred until Jen creates the Stripe account.
 
 Phase 4 (daily check-in grid), built 2026-09-14 to Jen's prototype and mockups 03–06:
 
@@ -77,6 +77,14 @@ Phase 7 (coach analysis), built 2026-09-15 — all on `/coach/sessions/[sessionI
 - **Compare sessions** — shown when a client has 2+ sessions: this one plus up to three recent others on a shared axis (union of waking hours, day-ordered past midnight), plus each session's windows in a table. Series differ by colour and dash.
 - Zone shading shared via `src/lib/chart.ts`. 29 unit tests total.
 
+Phase 8 (the Peak Plan deliverable), built 2026-09-15 — logic in `src/lib/peak-plan.ts`:
+
+- **`/plan/[sessionId]`** — the prototype's Plan view: three protected windows, "Your charged schedule" (the plan's own wording, same thresholds as the ideal day), "Guard these three things", session block, footer. Print CSS makes it one page ("Print or save as PDF"). The prototype's logo image isn't in `Design/`, so the header is text only. The "Burnout risk" row is dropped (out of scope). Guards whose window wasn't found are skipped rather than printing "Nothing books over —".
+- **Access — `canViewPeakPlan()` in `src/lib/viewer.ts`:** coaches always; the session's own client only with a *completed* `basic_peak_plan` purchase *for that session* (a $249 purchase also writes that row, per Phase 2). Purchases are service-role-only, so it can't be self-granted. Everyone else: 404. Once purchased, the results screen shows "View my Peak Plan" in place of the locked card. **Checkout doesn't exist yet (Phase 2)** — for now a purchase row can only be inserted with the service role.
+- **`/plan/[sessionId]/peak-plan.ics`** — one weekday event over the real peak window, 20 occurrences, **floating local time** (no timezone — the block sits at the same clock time wherever the client is), starting the next weekday, with UID/DTSTAMP, CRLF, escaping and line folding. No file when there's no peak window. Each is a deliberate fix of the prototype's export; see the commit and the builder's comments.
+- **`/coach/sessions/[sessionId]/export.csv`** — coach only. Header block, every hour × day plus 2dp average and zone, then reflections. Cells starting `= + - @` are prefixed with `'` so a client's reflection can't run as a formula in Excel. UTF-8 BOM + CRLF. Client email comes from `profiles.email` (next item).
+- **`profiles.email`** — mirrored from `auth.users` by triggers (migration `20260915111722_profile_email.sql`), so coach features read it under RLS instead of needing the service-role key. Clients can't write it.
+
 **Making someone a coach.** Signup always creates a client — `handle_new_user` never reads a role from signup metadata, and clients can't change their own role (see Security). Jen should sign up at `/signup` with her own email and password (don't create her account for her), then promote her through the Management API's SQL endpoint with `SUPABASE_ACCESS_TOKEN`:
 
 ```sql
@@ -88,9 +96,13 @@ where id = (select id from auth.users where email = '<jen''s email>');
 
 **Privilege escalation, found and fixed 2026-09-14** (`supabase/migrations/20260914203306_restrict_profile_updates.sql`). Supabase grants `anon` and `authenticated` write access to every column, leaving RLS as the only gate, and Phase 1's `profiles_update_own` didn't restrict columns. So any signed-up client could `update profiles set role = 'coach'` on their own row — which opened every client's sessions, entries, notes and profiles, plus the coach-only tables — and could set their own `stripe_customer_id`. Proven live with test users before the fix (a test client promoted itself and read another client's "For Jen" note). No real accounts existed, so no data was exposed. Fix: column-level privileges — clients may update `profiles.full_name` and nothing else. Phase 1's verification had tested clients reading each other but never a client changing their own role.
 
-**`scripts/verify-rls.mjs`** — live check of the whole access matrix with throwaway users: self-promotion, client isolation, coach-only and paid tables, and the coach role (27 checks). It creates and deletes real users on the live project. **Run it after any migration or policy change:** `node --env-file=.env.local scripts/verify-rls.mjs`.
+**Live verification scripts** — both create throwaway users in the real project and delete them afterwards:
 
-**Applying migrations:** the MCP connection hasn't worked in recent sessions, so migrations were applied through the Management API's SQL endpoint, together with their `supabase_migrations.schema_migrations` row in the same transaction, keeping history consistent with the first migration.
+- **`scripts/verify-rls.mjs`** — the database's access rules: self-promotion, client isolation, coach-only and paid tables, the coach role, profile email (30 checks). **Run after any migration or policy change:** `node --env-file=.env.local scripts/verify-rls.mjs`.
+- **`scripts/verify-access.mjs [baseUrl]`** — page- and file-level access as real signed-in users (signs in via `@supabase/ssr` and replays the cookies): coach pages, the Peak Plan across purchase states, the calendar file, the CSV, signed-out redirects. Defaults to `http://localhost:3000`; pass `https://charge-index.vercel.app` to check production. **Run after any change to routes or access.**
+- **`scripts/apply-migration.mjs <file>`** — applies a migration and its `schema_migrations` row in one transaction via the Management API: `node --env-file=../.env.local scripts/apply-migration.mjs supabase/migrations/<file>.sql`. Then regenerate `src/lib/database.types.ts`.
+
+
 
 Next.js was patched 16.3.1 → 16.3.5 on 2026-09-14 for two critical unauthenticated RCE advisories published after scaffolding (GHSA-2xp9-vwfh-vxw4 in the image optimizer's AVIF handling; GHSA-p293-qw3h-jr36 on Windows hosts), plus sharp and js-yaml advisories. Production wasn't exposed to the image one — no `remotePatterns`, so the optimizer rejects remote URLs (confirmed 400 live), no AVIF in `public/`, no `next/image` — and the Windows one doesn't apply on Vercel. Production has run 16.3.5 since the 2026-09-14 deploy (checked with `window.next.version` on the live site). Run `npm audit` at the start of each session; it was clean in August and not in September.
 
@@ -101,6 +113,8 @@ Free-tier projects pause after about a week without activity. This one was found
 **Keep-alive:** `.github/workflows/supabase-keepalive.yml` queries the database through the REST API every three days (repo secrets `SUPABASE_URL`, `SUPABASE_ANON_KEY`). If the project is already paused the run fails and GitHub emails the repo owner — a ping can't un-pause it. Manual run: `gh workflow run supabase-keepalive.yml`. Remove it if the project moves to a paid Supabase plan.
 
 ## Verified how
+
+**Phase 8:** 44/44 unit tests (ICS and CSV builders tested against the RFC details and the CSV format), lint/types/build/audit clean. `verify-access.mjs` passed locally and on production, `verify-rls.mjs` on production. The downloaded `.ics` parsed with ical.js: floating 09:00 start, 2-hour duration matching the 9–11 AM window, 20 occurrences all Mon–Fri. The CSV parsed with Python's `csv` module with BOM and CRLF. In a browser, a purchased client opened the full one-pager; as coach, the CSV of a session whose reflection was `=HYPERLINK("http://example.com","click me")` came out as `'=HYPERLINK(...)`, with embedded quotes correctly doubled. No server errors. Test data deleted.
 
 **Phase 7:** 29/29 unit tests, lint/types/build clean. Seeded a client with three sessions (Spring from Jen's demo data; Summer with a later peak; Fall in progress with a 1 AM bedtime, days 1, 2 and 4 complete and day 3 partial) and a single-session client. Predicted the Fall consistency by hand — 3 of 7 complete, longest streak 2, 48% covered, day 3 at 7/19 — and the page matched exactly, locally and on production. Comparison showed three sessions oldest first on a 19-hour shared axis, with windows Spring 9 AM – 12 PM / Summer 12 PM – 4 PM / Fall 8 AM – 10 AM and Fall's recovery 7 PM – 1 AM across midnight; the single-session client showed no comparison card. No server errors. Test data deleted.
 
