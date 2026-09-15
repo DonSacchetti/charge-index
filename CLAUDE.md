@@ -41,7 +41,7 @@ Phase 3 (session setup / onboarding) is built and verified locally:
 
 **Slot generation differs from the pseudocode in `../Planning/Build Plan.md` Section 3, on purpose.** The Build Plan's `buildSessionSlots()` treats the bedtime hour as inclusive and breaks for bedtimes past midnight. The prototype — which the Build Plan itself names as the reference implementation — excludes the bedtime hour and wraps past midnight. `src/lib/slots.ts` follows the prototype: wake 6am / bed 10pm gives 16 slots, wake 7am / bed 1am gives 18. Both verified live through the real UI.
 
-Phases 4 (daily check-in grid), 5 (weekly map engine + client results), 6 (coach view), 7 (ideal day, zone cards, consistency, session comparison) 8 (the Peak Plan, calendar file, CSV export) and 9 (AI insight drafts — built, but **switched off until an Anthropic API key exists**) are **live in production**. Next: Phase 10 (coach roster). Phase 2 (payments) stays deferred until Jen creates the Stripe account.
+Phases 4 (daily check-in grid), 5 (weekly map engine + client results), 6 (coach view), 7 (ideal day, zone cards, consistency, session comparison) 8 (the Peak Plan, calendar file, CSV export), 9 (AI insight drafts — built, but **switched off until an Anthropic API key exists**) and 10 (coach roster, client pages, notes, bulk exports) are **live in production**. Next: Phase 11 (reminders, polish, launch). Phase 2 (payments) stays deferred until Jen creates the Stripe account.
 
 Phase 4 (daily check-in grid), built 2026-09-14 to Jen's prototype and mockups 03–06:
 
@@ -95,6 +95,15 @@ Phase 9 (AI insight drafts), built 2026-09-15 — the "Draft insights" panel on 
 - **Switching it on:** create the Anthropic Console account under Jen's identity, create an API key, add it to Vercel production as a *sensitive* env var named `ANTHROPIC_API_KEY`, redeploy. The panel enables itself. **Not yet verified against the live API** — do one real draft on a seeded session and check the saved row (`model`, token counts) the first time.
 - **Rough cost:** each draft sends a few thousand input tokens and returns roughly one to a few thousand output tokens (including thinking) at Opus 5's $5 / $25 per million — on the order of a few cents to ten cents per draft. The token columns in `ai_insights` will show the real figures.
 
+Phase 10 (coach roster), built 2026-09-15:
+
+- **`/coach`** — the roster (`src/lib/roster.ts`, loaded by `loadRosterData()` in `src/lib/coach-data.ts`): every client (`role = 'client'` only) with latest session and status, session count, AI drafts, notes; most recent activity first; `?q=` searches name or email. The old all-sessions list is now **`/coach/sessions`**.
+- **`/coach/clients/[clientId]`** — sessions with waking hours, coverage, windows, AI energy type, links to analysis / plan / CSV; and **coach notes** (`NoteForm` + `addNote` / `deleteNote` actions). A note can be about the client or one of their sessions.
+- **`coach_notes`** table (migration `20260915113829_coach_notes.sql`) — coach-only select; insert/update/delete only by the author (`author_id = auth.uid()`). Clients have no policy at all.
+- **Bulk exports** — `/coach/export/sessions.csv` (summary row per session, all clients), `/coach/clients/[id]/summary.csv`, `/coach/clients/[id]/sessions.zip` (every session's detailed CSV via `fflate`). Coach only.
+- **`src/lib/fetch-all.ts`** — anything spanning all clients pages through `.range()`. **PostgREST returns at most 1,000 rows per request and doesn't say it truncated** — use `fetchAll()` for any query that can grow past that.
+- **`analyseSession()`** in `src/lib/session-data.ts` is the single source of per-session analysis, used by the session pages and the bulk loaders alike.
+
 **Making someone a coach.** Signup always creates a client — `handle_new_user` never reads a role from signup metadata, and clients can't change their own role (see Security). Jen should sign up at `/signup` with her own email and password (don't create her account for her), then promote her through the Management API's SQL endpoint with `SUPABASE_ACCESS_TOKEN`:
 
 ```sql
@@ -123,6 +132,8 @@ Free-tier projects pause after about a week without activity. This one was found
 **Keep-alive:** `.github/workflows/supabase-keepalive.yml` queries the database through the REST API every three days (repo secrets `SUPABASE_URL`, `SUPABASE_ANON_KEY`). If the project is already paused the run fails and GitHub emails the repo owner — a ping can't un-pause it. Manual run: `gh workflow run supabase-keepalive.yml`. Remove it if the project moves to a paid Supabase plan.
 
 ## Verified how
+
+**Phase 10:** 60/60 unit tests (roster aggregation and ordering, search, summary CSV escaping, `fetchAll` paging to 2,500 rows and surfacing errors). `verify-rls.mjs` adds notes: author stamping, a coach can't write as another coach or edit/delete another's note, a client can't read or write notes. `verify-access.mjs` adds the roster, search, client pages, every export for coach (200) and client (404), a ZIP entry byte-identical to the single-session CSV, and a client with 1,138 entries across 9 sessions summarised exactly — past the 1,000-row cap. Both pass locally and on production. In a browser with two coaches: roster counts correct and coaches excluded; a note added through the form saved with its session tag and the form cleared; Delete appeared only on the author's own note and removed it, with the other coach's note intact in the database. No server errors. Test data deleted.
 
 **Phase 9:** 53/53 unit tests — prompt contents (table, averages, windows, fenced reflections including an attempt to close the fence), response normalising, and the API call against a stand-in client: request parameters (model, structured output, fallbacks), success with the serving model and usage, refusal, truncation, unparseable and incomplete output, and typed errors. `tsc` confirmed the SDK accepts the exact request shape. `verify-rls.mjs` 32/32 (coach can write drafts; clients can't read or write them). In a browser: with no key, the panel says it isn't switched on and the button is disabled; forcing the button on and pressing it, the server refused on its own. A saved draft rendered with label, three observations, three starting points and the model/time line. `verify-access.mjs` on production includes the coach session page (renders for coach with the panel, 404 for the session's own client). **No live Anthropic call has been made** — no account under Jen's identity exists. Test data deleted.
 
