@@ -25,13 +25,15 @@ export default async function ClientLayout({ children }: { children: ReactNode }
     const inProgress = sessions?.find((s) => s.status === "in_progress");
     const completed = sessions?.find((s) => s.status === "completed");
     const paid = new Set((purchases ?? []).map((p) => p.session_id));
-    const planned = sessions?.find((s) => paid.has(s.id));
+    const isStaff = profile?.role === "coach" || profile?.role === "admin";
+    // Staff can open any Peak Plan without buying one (see canViewPeakPlan), so the tab isn't locked for them.
+    const planned = sessions?.find((s) => paid.has(s.id)) ?? (isStaff ? completed : undefined);
     nav = {
       name: profile?.full_name ?? null,
       logHref: inProgress ? `/track/${inProgress.id}` : null,
       resultsHref: completed ? `/track/${completed.id}/complete` : null,
       planHref: planned ? `/plan/${planned.id}` : null,
-      isStaff: profile?.role === "coach" || profile?.role === "admin",
+      isStaff,
     };
   }
 
