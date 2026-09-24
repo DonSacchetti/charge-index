@@ -70,16 +70,16 @@ export function planGuards(windows: Windows): { n: string; text: string }[] {
 // ── Calendar file (.ics) ───────────────────────────────────────────────────
 
 const pad = (n: number) => String(n).padStart(2, "0");
-const floating = (d: Date) =>
+export const icsFloating = (d: Date) =>
   `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}00`;
-const utcStamp = (d: Date) => `${floating(d)}Z`;
+export const icsUtcStamp = (d: Date) => `${icsFloating(d)}Z`;
 
 /** RFC 5545 §3.3.11 text escaping. */
-const escapeText = (s: string) =>
+export const escapeIcsText = (s: string) =>
   s.replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
 
 /** RFC 5545 §3.1: fold content lines longer than 75 octets, never mid-character. */
-function fold(line: string): string {
+export function foldIcsLine(line: string): string {
   const encoder = new TextEncoder();
   const out: string[] = [];
   let current = "";
@@ -137,17 +137,17 @@ export function buildPeakPlanIcs({
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
     `UID:peak-plan-${sessionId}@charge-index`,
-    `DTSTAMP:${utcStamp(now)}`,
-    `DTSTART:${floating(start)}`,
-    `DTEND:${floating(end)}`,
+    `DTSTAMP:${icsUtcStamp(now)}`,
+    `DTSTART:${icsFloating(start)}`,
+    `DTEND:${icsFloating(end)}`,
     "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=20",
-    `SUMMARY:${escapeText("Peak Plan Block — protected")}`,
-    `DESCRIPTION:${escapeText(`Your fully-charged window (${formatWindow(peak)}). Deep work only. Source: your Charge Index.`)}`,
+    `SUMMARY:${escapeIcsText("Peak Plan Block — protected")}`,
+    `DESCRIPTION:${escapeIcsText(`Your fully-charged window (${formatWindow(peak)}). Deep work only. Source: your Charge Index.`)}`,
     "TRANSP:OPAQUE",
     "END:VEVENT",
     "END:VCALENDAR",
   ];
-  return lines.map(fold).join("\r\n") + "\r\n";
+  return lines.map(foldIcsLine).join("\r\n") + "\r\n";
 }
 
 // ── CSV export ─────────────────────────────────────────────────────────────

@@ -279,6 +279,28 @@ export function CheckIn({
     );
   };
 
+  // Hourly reminders, as a calendar file the phone can add in one tap. A web
+  // page can't write into the Reminders app itself (no API exists), and the
+  // calendar alert does the same job: a notification at the top of each hour.
+  const reminders = (
+    <Surface className="p-5" accent="gold" delay={160}>
+      <SectionLabel>Reminders</SectionLabel>
+      <p className="text-[13px] leading-[1.6] text-body">
+        Add an alert at the top of every hour you&rsquo;re tracking, for the rest of this session. Your phone will ask
+        once, then remind you until the session ends.
+      </p>
+      <a
+        href={`/track/${sessionId}/reminders.ics`}
+        className="mt-4 inline-flex min-h-12 items-center rounded-2xl bg-navy px-5 text-[13.5px] font-extrabold text-white transition hover:-translate-y-0.5 hover:bg-navy-light"
+      >
+        Add hourly reminders
+      </a>
+      <p className="mt-3 text-[11.5px] leading-[1.5] text-muted">
+        Opens in your calendar app — Apple Calendar, Google Calendar or Outlook — and adds one alert per hour.
+      </p>
+    </Surface>
+  );
+
   const legend = (
     <Surface className="p-5" delay={200}>
       <SectionLabel>The scale</SectionLabel>
@@ -487,7 +509,10 @@ export function CheckIn({
               </div>
             </Surface>
 
-            <div className="lg:hidden">{legend}</div>
+            <div className="flex flex-col gap-5 lg:hidden">
+              {reminders}
+              {legend}
+            </div>
 
             {/* Day navigation. When tomorrow hasn't opened yet, the way on is
                 to come back — but finishing early stays available, since some
@@ -541,6 +566,7 @@ export function CheckIn({
               </div>
               <div className="flex flex-col gap-1">{days.map((_, i) => dayButton(i, "row"))}</div>
             </Surface>
+            {reminders}
             {legend}
           </aside>
         </div>

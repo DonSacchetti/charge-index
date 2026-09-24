@@ -193,6 +193,13 @@ export function SetupForm({
         })}
       </div>
 
+      {/* Email reminders need a sending account that doesn't exist yet; the
+          calendar reminders on the next screen work today (2026-09-24). */}
+      <p className="mb-6 rounded-2xl border border-line bg-cream px-4 py-3 text-[12.5px] leading-[1.55] text-body">
+        <strong className="text-navy">Want a nudge every hour?</strong> On the next screen you can add hourly reminders
+        straight to your phone&rsquo;s calendar, in one tap.
+      </p>
+
       <div className="mb-3">
         <FormError message={state?.error} />
       </div>
