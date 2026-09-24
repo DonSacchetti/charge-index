@@ -91,3 +91,69 @@ export function formatWindow(run: number[]): string {
   if (run.length === 0) return "—";
   return `${formatHour(run[0])} – ${formatHour((run[run.length - 1] + 1) % 24)}`;
 }
+
+/**
+ * Hours that needn't be consecutive: "9 AM – 11 AM" when they are, "9 AM and
+ * 2 PM" when they aren't. The free tier's top two hours are often adjacent,
+ * but nothing guarantees it, so a plain range would lie about the hours
+ * between them.
+ */
+export function formatHours(run: number[]): string {
+  if (run.length === 0) return "—";
+  const consecutive = run.every((h, i) => i === 0 || h === (run[i - 1] + 1) % 24);
+  if (consecutive) return formatWindow(run);
+  return run.map(formatHour).join(" and ");
+}
+
+/**
+ * Jen's minimum before the app will call a peak window (her feedback,
+ * 2026-09-24): under 35 logged hours there isn't enough evidence, so the
+ * results screen says so instead of naming hours.
+ */
+export const MIN_HOURS_FOR_RESULT = 35;
+
+/**
+ * The free tier's answer: the `count` hours with the highest averages, in
+ * clock order (Jen, 2026-09-24 — her own session returned a four-hour window,
+ * and she wants the free version to name the best two hours only).
+ *
+ * Ties break towards the hour answered on more days, then the earlier slot, so
+ * the result is stable rather than dependent on input order. Hours with no
+ * data can never be chosen. Fewer than `count` answered hours returns what
+ * there is.
+ */
+export function topHours(map: HourAverage[], count = 2): number[] {
+  const order = new Map(map.map((m, i) => [m.hour, i]));
+  return map
+    .filter((m) => m.avgPct !== null)
+    .sort(
+      (a, b) =>
+        b.avgPct! - a.avgPct! ||
+        b.daysAnswered - a.daysAnswered ||
+        order.get(a.hour)! - order.get(b.hour)!,
+    )
+    .slice(0, count)
+    .map((m) => m.hour)
+    .sort((a, b) => order.get(a)! - order.get(b)!);
+}
+
+/** Entries at the top of the scale, as a share of all entries (0–1). */
+export function topLevelShare(entries: Entry[]): number {
+  if (!entries.length) return 0;
+  return entries.filter((e) => e.pct === 100).length / entries.length;
+}
+
+/**
+ * "Fully charged all day" detection — Jen wants these clients flagged so she
+ * can call them (her feedback, 2026-09-24): someone reporting 100% almost
+ * every hour is usually reading energy, not brain activity, and that's a
+ * coaching conversation rather than a scheduling one.
+ *
+ * Needs enough hours to mean anything, so it uses the same floor as the
+ * results screen.
+ */
+export const FLAT_TOP_SHARE = 0.8;
+
+export function isFlatTop(entries: Entry[]): boolean {
+  return entries.length >= MIN_HOURS_FOR_RESULT && topLevelShare(entries) >= FLAT_TOP_SHARE;
+}

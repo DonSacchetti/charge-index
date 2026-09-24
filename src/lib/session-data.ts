@@ -6,8 +6,11 @@ import {
   type Entry,
   type HourAverage,
   type Windows,
+  MIN_HOURS_FOR_RESULT,
   computeWeeklyMap,
   findWindows,
+  isFlatTop,
+  topHours,
 } from "@/lib/weekly-map";
 
 export type Reflection = {
@@ -89,5 +92,18 @@ export function analyseSession(session: SessionShape, rows: EntryRow[], notes: N
     }))
     .filter((r) => r.feel || r.unexpected || r.forJen);
 
-  return { wake, sleep, hours, entries, map, windows, reflections };
+  return {
+    wake,
+    sleep,
+    hours,
+    entries,
+    map,
+    windows,
+    reflections,
+    /** The free tier's result: the two strongest hours (Jen, 2026-09-24). */
+    topPeak: topHours(map),
+    /** Below this, the results screen withholds the peak hours entirely. */
+    hasEnoughData: entries.length >= MIN_HOURS_FOR_RESULT,
+    flatTop: isFlatTop(entries),
+  };
 }

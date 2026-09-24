@@ -8,6 +8,8 @@ type Props = {
   windows: Windows;
   /** Days in the session — an hour answered on fewer days is "partial". */
   dayCount: number;
+  /** Overrides the peak marker's wording, e.g. "Your peak hours" for clients. */
+  peakLabel?: string;
 };
 
 const W = 760;
@@ -37,7 +39,10 @@ const y = (v: number) => M.top + (1 - v / 100) * PLOT_H;
  * - Gap in the line: nobody answered that hour on any day. There is no
  *   average to draw, so the line doesn't invent one across it.
  */
-export function ChargeCurve({ map, windows, dayCount }: Props) {
+export function ChargeCurve({ map, windows, dayCount, peakLabel }: Props) {
+  /** "Peak window", or the caller's own wording for the peak band. */
+  const labelOf = (band: keyof Windows) =>
+    band === "peak" && peakLabel ? peakLabel : `${WINDOW_STYLE[band].label} window`;
   const n = map.length;
   const step = n ? PLOT_W / n : PLOT_W;
   const x = (i: number) => M.left + (i + 0.5) * step;
@@ -57,19 +62,25 @@ export function ChargeCurve({ map, windows, dayCount }: Props) {
 
   const indexOf = new Map(map.map((m, i) => [m.hour, i]));
   const answered = map.filter((m) => m.avgPct !== null).length;
+  // Only the bands this view actually marks. The client results screen passes
+  // its top peak hours and nothing else, and an empty band shouldn't appear
+  // in the legend or be announced as missing.
+  const bandsShown = (Object.keys(WINDOW_STYLE) as (keyof Windows)[]).filter(
+    (band) => windows[band].length > 0,
+  );
 
   const summary =
     answered === 0
       ? "No hours logged yet."
       : `Average charge for ${answered} of ${n} waking hours. ` +
-        (Object.keys(WINDOW_STYLE) as (keyof Windows)[])
-          .map((band) => {
-            const run = windows[band];
-            return run.length
-              ? `${WINDOW_STYLE[band].label} window ${formatHour(run[0])} to ${formatHour((run[run.length - 1] + 1) % 24)}.`
-              : `No ${WINDOW_STYLE[band].label.toLowerCase()} window.`;
-          })
-          .join(" ");
+        (bandsShown.length
+          ? bandsShown
+              .map((band) => {
+                const run = windows[band];
+                return `${labelOf(band)} ${formatHour(run[0])} to ${formatHour((run[run.length - 1] + 1) % 24)}.`;
+              })
+              .join(" ")
+          : "No windows marked.");
 
   return (
     <figure className="m-0">
@@ -203,9 +214,8 @@ export function ChargeCurve({ map, windows, dayCount }: Props) {
 
           {/* Window markers under the axis. One row: the bands are disjoint, so
               an hour's average can sit in at most one window. */}
-          {(Object.keys(WINDOW_STYLE) as (keyof Windows)[]).map((band) => {
+          {bandsShown.map((band) => {
             const run = windows[band];
-            if (!run.length) return null;
             const first = indexOf.get(run[0])!;
             const last = indexOf.get(run[run.length - 1])!;
             return (
@@ -218,7 +228,7 @@ export function ChargeCurve({ map, windows, dayCount }: Props) {
                 rx={3}
                 fill={WINDOW_STYLE[band].color}
               >
-                <title>{`${WINDOW_STYLE[band].label} window`}</title>
+                <title>{labelOf(band)}</title>
               </rect>
             );
           })}
@@ -234,13 +244,13 @@ export function ChargeCurve({ map, windows, dayCount }: Props) {
           <span className="inline-block h-[11px] w-[11px] rounded-full border-[2.5px] border-navy bg-white" />
           Some days only (n = days answered)
         </span>
-        {(Object.keys(WINDOW_STYLE) as (keyof Windows)[]).map((band) => (
+        {bandsShown.map((band) => (
           <span key={band} className="flex items-center gap-[6px]">
             <span
               className="inline-block h-[6px] w-5 rounded-full"
               style={{ background: WINDOW_STYLE[band].color }}
             />
-            {WINDOW_STYLE[band].label} window
+            {labelOf(band)}
           </span>
         ))}
       </figcaption>

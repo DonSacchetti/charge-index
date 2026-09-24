@@ -2,20 +2,28 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { PageBody, PageHero, SectionLabel, Surface } from "@/components/AppShell";
+import { ChargeCurve } from "@/components/ChargeCurve";
 import { loadSessionAnalysis } from "@/lib/session-data";
 import { formatHour } from "@/lib/slots";
 import { canViewPeakPlan, requireViewer } from "@/lib/viewer";
-import { formatWindow } from "@/lib/weekly-map";
+import { MIN_HOURS_FOR_RESULT, formatHours } from "@/lib/weekly-map";
 
 /** Jen's booking link for the $249 session, as used in her prototype. */
 const BOOK_SESSION_URL = "https://calendly.com/soenenstrategies/introtimestrategycall";
 
 /**
- * End-of-session results, built to mockups 07–10. Per Josh (2026-09-14) the
- * client sees their peak window here. That's the one piece of analysis on the
- * client side: it's computed from the client's own entries, which RLS already
- * lets them read. Only `windows.peak` is rendered — the curve, the other
- * windows, ideal day and AI insights stay on the coach side.
+ * End-of-session results, built to mockups 07–10, then reworked after Jen's
+ * first run through the app (2026-09-24):
+ *
+ *   - The free result is her TOP TWO HOURS, not the longest ≥90% run. Hers
+ *     came back as a four-hour window, which gives away more than the free
+ *     tier should and is wider than the hour or two she'd coach someone to
+ *     protect. `topPeak` comes from lib/weekly-map.
+ *   - Clients now see their CURVE. They didn't before, though both this page
+ *     and the landing page promised it, and it's what makes the result feel
+ *     real. The other windows, ideal day and AI insights stay coach-only.
+ *   - Under MIN_HOURS_FOR_RESULT logged hours nothing is generated at all:
+ *     no hours, no curve, no plan to buy.
  */
 export default async function CompletePage({
   params,
@@ -31,13 +39,12 @@ export default async function CompletePage({
   ]);
 
   if (!data) notFound();
-  const { session, wake, sleep, entries, windows } = data;
+  const { session, wake, sleep, entries, map, topPeak, hasEnoughData } = data;
   if (session.status !== "completed") redirect(`/track/${sessionId}`);
-  const peak = windows.peak;
   const hasPlan = await canViewPeakPlan(viewer, session);
 
   const first = profile?.full_name?.trim().split(/\s+/)[0] || "friend";
-  const peakSet = new Set(peak);
+  const peakSet = new Set(topPeak);
   const stats = [
     { label: "Session", value: session.label ?? "—", level: 75 },
     { label: "Days tracked", value: `${session.day_count} days`, level: 50 },
@@ -45,13 +52,18 @@ export default async function CompletePage({
     { label: "Waking window", value: `${formatHour(wake)} – ${formatHour(sleep)}`, level: 25 },
   ];
   const steps = session.day_count + 2;
+  const shortfall = MIN_HOURS_FOR_RESULT - entries.length;
 
   return (
     <>
       <PageHero
         eyebrow="Sent to Jen · Complete"
         title={<>Thanks, {first}.</>}
-        lead="Your Charge Index is complete. Your curve and your peak windows are yours to keep, free. Where you go next is up to you."
+        lead={
+          hasEnoughData
+            ? "Your Charge Index is complete. Your curve and your peak hours are yours to keep, free. Where you go next is up to you."
+            : `Your entries are saved. There aren't quite enough hours yet to read your pattern honestly — ${shortfall} more and your curve appears here.`
+        }
         progress={{ total: steps, current: steps - 1 }}
         aside={
           <div className="relative hidden h-24 w-24 sm:block" aria-hidden>
@@ -73,35 +85,76 @@ export default async function CompletePage({
       <PageBody>
         <div className="grid items-start gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="flex flex-col gap-6">
-            <Surface className="p-6 sm:p-8" accent={100}>
-              <SectionLabel>Your session, free</SectionLabel>
-              <div className="text-[13px] font-extrabold tracking-[0.08em] text-level-100 uppercase">Peak window found</div>
-              <div className="mt-1 font-serif text-[44px] leading-tight font-semibold text-navy sm:text-[56px]">{formatWindow(peak)}</div>
-              <p className="mt-2 text-[14px] leading-[1.6] text-body">
-                {peak.length
-                  ? "The stretch of your day where you ran most fully charged. Protect it."
-                  : "No hours averaged fully charged this session — keep tracking and it may appear."}
-              </p>
-              <div className="mt-6" aria-label={`Waking hours ${formatHour(wake)} to ${formatHour(sleep)}, peak window ${formatWindow(peak)}`} role="img">
-                <div className="flex gap-[3px]">
-                  {data.hours.map((h, i) => (
-                    <span
-                      key={h}
-                      className="h-10 flex-1 origin-bottom rounded-md"
-                      style={{
-                        background: peakSet.has(h) ? "linear-gradient(180deg, var(--color-glow-100), var(--color-level-100))" : "var(--color-cream)",
-                        boxShadow: peakSet.has(h) ? "0 8px 18px -8px var(--color-glow-100)" : undefined,
-                        animation: `charge-rise 0.6s cubic-bezier(.2,.8,.2,1) ${i * 35}ms both`,
-                      }}
-                    />
-                  ))}
+            {hasEnoughData ? (
+              <Surface className="p-6 sm:p-8" accent={100}>
+                <SectionLabel>Your session, free</SectionLabel>
+                <div className="text-[13px] font-extrabold tracking-[0.08em] text-level-100 uppercase">
+                  {topPeak.length > 1 ? "Your peak hours" : "Your peak hour"}
                 </div>
-                <div className="mt-2 flex justify-between text-[11px] font-bold text-muted">
-                  <span>{formatHour(wake)}</span>
-                  <span>{formatHour(sleep)}</span>
+                <div className="mt-1 font-serif text-[44px] leading-tight font-semibold text-navy sm:text-[56px]">{formatHours(topPeak)}</div>
+                <p className="mt-2 text-[14px] leading-[1.6] text-body">
+                  {topPeak.length
+                    ? "The hours you ran most fully charged, averaged across every day you logged. Protect them."
+                    : "No hours were logged this session, so there's nothing to read yet."}
+                </p>
+                <div className="mt-6" aria-label={`Waking hours ${formatHour(wake)} to ${formatHour(sleep)}, peak hours ${formatHours(topPeak)}`} role="img">
+                  <div className="flex gap-[3px]">
+                    {data.hours.map((h, i) => (
+                      <span
+                        key={h}
+                        className="h-10 flex-1 origin-bottom rounded-md"
+                        style={{
+                          background: peakSet.has(h) ? "linear-gradient(180deg, var(--color-glow-100), var(--color-level-100))" : "var(--color-cream)",
+                          boxShadow: peakSet.has(h) ? "0 8px 18px -8px var(--color-glow-100)" : undefined,
+                          animation: `charge-rise 0.6s cubic-bezier(.2,.8,.2,1) ${i * 35}ms both`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <div className="mt-2 flex justify-between text-[11px] font-bold text-muted">
+                    <span>{formatHour(wake)}</span>
+                    <span>{formatHour(sleep)}</span>
+                  </div>
                 </div>
-              </div>
-            </Surface>
+              </Surface>
+            ) : (
+              <Surface className="p-6 sm:p-8" accent={25}>
+                <SectionLabel>Not enough hours yet</SectionLabel>
+                <div className="font-serif text-[36px] leading-tight font-semibold text-navy sm:text-[44px]">
+                  {entries.length} of {MIN_HOURS_FOR_RESULT} hours
+                </div>
+                <p className="mt-2 text-[14px] leading-[1.6] text-body">
+                  A pattern needs enough hours behind it to mean anything. Below {MIN_HOURS_FOR_RESULT} logged hours the
+                  app holds back rather than naming hours it can&rsquo;t stand behind. Your entries are safe — log{" "}
+                  {shortfall} more {shortfall === 1 ? "hour" : "hours"} and your curve and peak hours appear here.
+                </p>
+                <div className="mt-6 h-2.5 overflow-hidden rounded-full bg-cream" role="img" aria-label={`${entries.length} of ${MIN_HOURS_FOR_RESULT} hours logged`}>
+                  <span
+                    className="block h-full rounded-full"
+                    style={{
+                      width: `${Math.min(100, (entries.length / MIN_HOURS_FOR_RESULT) * 100)}%`,
+                      background: "linear-gradient(90deg, var(--color-level-25), var(--color-level-75))",
+                    }}
+                  />
+                </div>
+              </Surface>
+            )}
+
+            {hasEnoughData ? (
+              <Surface className="p-6 sm:p-8" delay={120}>
+                <SectionLabel>Your curve</SectionLabel>
+                <h2 className="font-serif text-[24px] font-semibold text-navy">Your day, hour by hour</h2>
+                <p className="mt-2 mb-5 text-[14px] leading-[1.6] text-body">
+                  Your average charge for each waking hour, across every day you logged.
+                </p>
+                <ChargeCurve
+                  map={map}
+                  windows={{ peak: topPeak, collaboration: [], recovery: [] }}
+                  dayCount={session.day_count}
+                  peakLabel="Your peak hours"
+                />
+              </Surface>
+            ) : null}
 
             <div className="grid grid-cols-2 gap-4">
               {stats.map((s, i) => (
@@ -117,43 +170,46 @@ export default async function CompletePage({
               href={`/track/${sessionId}`}
               className="inline-flex min-h-12 items-center justify-center self-start rounded-2xl border-[1.5px] border-line bg-white px-5 text-[13.5px] font-extrabold text-body transition hover:border-navy hover:text-navy"
             >
-              Edit my entries
+              {hasEnoughData ? "Edit my entries" : "Fill in more hours"}
             </Link>
           </div>
 
           <div className="flex flex-col gap-5">
-            <section className="aurora animate-rise relative overflow-hidden rounded-[26px] p-7 text-white shadow-[0_30px_60px_-28px_rgba(19,36,73,0.75)] [animation-delay:160ms]">
-              <div className="spectrum-animated absolute inset-x-0 top-0 h-1.5" />
-              <div className="mb-3 text-[11px] font-extrabold tracking-[0.18em] text-gold-bright uppercase">Turn it into a plan</div>
-              <div className="flex items-baseline justify-between gap-3">
-                <h2 className="font-serif text-[24px] font-semibold">
-                  Basic Peak Plan<sup className="text-[11px]">™</sup>
-                </h2>
-                <div className="font-serif text-[28px] font-semibold text-gold-bright">$49</div>
-              </div>
-              <p className="mt-3 text-[14px] leading-[1.7] text-white/80">
-                Built from your data right now, no call needed. Your full schedule by charge level, your protected peak windows, a calendar file
-                and a one-page PDF.
-              </p>
-              <div className="mt-6 flex flex-wrap items-center gap-3">
-                {hasPlan ? (
-                  <Link
-                    href={`/plan/${sessionId}`}
-                    className="inline-flex min-h-12 items-center rounded-2xl bg-gold px-6 text-[14.5px] font-extrabold text-navy-deep transition hover:-translate-y-0.5 hover:bg-gold-bright"
-                  >
-                    View my Peak Plan
-                  </Link>
-                ) : (
-                  <>
-                    {/* Checkout arrives with Phase 2, once Jen's Stripe account exists. */}
-                    <button type="button" disabled className="inline-flex min-h-12 cursor-not-allowed items-center rounded-2xl bg-gold px-6 text-[14.5px] font-extrabold text-navy-deep opacity-60">
-                      Unlock my plan
-                    </button>
-                    <span className="text-[12px] font-bold text-white/60">Coming soon</span>
-                  </>
-                )}
-              </div>
-            </section>
+            {/* Nothing to sell until there's enough data to build a plan from. */}
+            {hasEnoughData ? (
+              <section className="aurora animate-rise relative overflow-hidden rounded-[26px] p-7 text-white shadow-[0_30px_60px_-28px_rgba(19,36,73,0.75)] [animation-delay:160ms]">
+                <div className="spectrum-animated absolute inset-x-0 top-0 h-1.5" />
+                <div className="mb-3 text-[11px] font-extrabold tracking-[0.18em] text-gold-bright uppercase">Turn it into a plan</div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <h2 className="font-serif text-[24px] font-semibold">
+                    Basic Peak Plan<sup className="text-[11px]">™</sup>
+                  </h2>
+                  <div className="font-serif text-[28px] font-semibold text-gold-bright">$49</div>
+                </div>
+                <p className="mt-3 text-[14px] leading-[1.7] text-white/80">
+                  Built from your data right now, no call needed. Your full schedule by charge level, your protected peak windows, a calendar file
+                  and a one-page PDF.
+                </p>
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  {hasPlan ? (
+                    <Link
+                      href={`/plan/${sessionId}`}
+                      className="inline-flex min-h-12 items-center rounded-2xl bg-gold px-6 text-[14.5px] font-extrabold text-navy-deep transition hover:-translate-y-0.5 hover:bg-gold-bright"
+                    >
+                      View my Peak Plan
+                    </Link>
+                  ) : (
+                    <>
+                      {/* Checkout arrives with Phase 2, once Jen's Stripe account exists. */}
+                      <button type="button" disabled className="inline-flex min-h-12 cursor-not-allowed items-center rounded-2xl bg-gold px-6 text-[14.5px] font-extrabold text-navy-deep opacity-60">
+                        Unlock my plan
+                      </button>
+                      <span className="text-[12px] font-bold text-white/60">Coming soon</span>
+                    </>
+                  )}
+                </div>
+              </section>
+            ) : null}
 
             <Surface className="p-7" accent="gold" delay={220}>
               <div className="flex items-baseline justify-between gap-3">

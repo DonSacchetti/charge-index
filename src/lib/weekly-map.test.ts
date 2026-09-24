@@ -7,7 +7,11 @@ import {
   computeWeeklyMap,
   findWindows,
   formatWindow,
+  isFlatTop,
   longestRun,
+  formatHours,
+  topHours,
+  topLevelShare,
   BANDS,
 } from "@/lib/weekly-map";
 
@@ -118,5 +122,85 @@ describe("formatWindow", () => {
 
   it("shows an em dash when there is no window", () => {
     expect(formatWindow([])).toBe("—");
+  });
+});
+
+describe("topHours", () => {
+  const map = (pairs: [number, number | null, number?][]) =>
+    pairs.map(([hour, avgPct, daysAnswered = 5]) => ({ hour, avgPct, daysAnswered }));
+
+  it("picks the two highest averages, in clock order", () => {
+    expect(topHours(map([[9, 60], [10, 95], [11, 40], [12, 88]]))).toEqual([10, 12]);
+  });
+
+  it("ignores hours with no data", () => {
+    expect(topHours(map([[9, null], [10, 50], [11, null], [12, 30]]))).toEqual([10, 12]);
+  });
+
+  it("returns what there is when fewer hours are answered", () => {
+    expect(topHours(map([[9, null], [10, 75]]))).toEqual([10]);
+    expect(topHours([])).toEqual([]);
+  });
+
+  it("breaks ties towards more days answered, then the earlier slot", () => {
+    expect(topHours(map([[9, 90, 2], [10, 90, 5], [11, 90, 5]]))).toEqual([10, 11]);
+  });
+
+  it("keeps clock order across midnight, following slot position", () => {
+    // Slots for a 1 AM bedtime: 22, 23, 0 — midnight is last, not first.
+    expect(topHours(map([[22, 70], [23, 95], [0, 99]]))).toEqual([23, 0]);
+  });
+
+  it("can return more than two when asked", () => {
+    expect(topHours(map([[9, 60], [10, 95], [11, 40], [12, 88]]), 3)).toEqual([9, 10, 12]);
+  });
+});
+
+describe("isFlatTop", () => {
+  const entries = (count: number, pct: number, hourFrom = 0) =>
+    Array.from({ length: count }, (_, i) => ({ dayNumber: 1, hour: hourFrom + i, pct }));
+
+  it("flags a client logging 100% for at least 80% of their hours", () => {
+    expect(isFlatTop([...entries(36, 100)])).toBe(true);
+    expect(topLevelShare([...entries(36, 100)])).toBe(1);
+  });
+
+  it("does not flag a varied session", () => {
+    expect(isFlatTop([...entries(20, 100), ...entries(20, 50, 20)])).toBe(false);
+  });
+
+  it("needs enough hours before it means anything", () => {
+    // All 100%, but only 20 hours — too little to call.
+    expect(isFlatTop(entries(20, 100))).toBe(false);
+  });
+
+  it("is a share, not a count: 80% of hours at the top flags", () => {
+    expect(topLevelShare([...entries(32, 100), ...entries(8, 50, 32)])).toBe(0.8);
+    expect(isFlatTop([...entries(32, 100), ...entries(8, 50, 32)])).toBe(true);
+    expect(isFlatTop([...entries(31, 100), ...entries(9, 50, 31)])).toBe(false);
+  });
+
+  it("treats an empty session as not flagged", () => {
+    expect(topLevelShare([])).toBe(0);
+    expect(isFlatTop([])).toBe(false);
+  });
+});
+
+describe("formatHours", () => {
+  it("reads as a range when the hours are consecutive", () => {
+    expect(formatHours([9, 10])).toBe("9 AM – 11 AM");
+  });
+
+  it("lists them when they are not, rather than implying the hours between", () => {
+    expect(formatHours([9, 14])).toBe("9 AM and 2 PM");
+  });
+
+  it("treats a run across midnight as consecutive", () => {
+    expect(formatHours([23, 0])).toBe("11 PM – 1 AM");
+  });
+
+  it("handles one hour and none", () => {
+    expect(formatHours([14])).toBe("2 PM – 3 PM");
+    expect(formatHours([])).toBe("—");
   });
 });
