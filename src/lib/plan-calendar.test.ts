@@ -64,10 +64,11 @@ describe("buildScheduleIcs", () => {
     expect(ics).toContain("DTEND:20260924T120000");
   });
 
-  it("uses the client's own words as the title, and the plan's wording otherwise", () => {
-    const ics = build()!;
-    expect(ics).toContain("SUMMARY:Write the board deck");
-    expect(ics).toContain("SUMMARY:Admin");
+  it("titles each event with the charge level, then the client's words", () => {
+    const ics = build()!.replace(/\r\n /g, "");
+    expect(ics).toContain("SUMMARY:Fully Charged · Write the board deck");
+    // No note: the plan's own wording for that kind of hour.
+    expect(ics).toContain("SUMMARY:Steady / Low · Admin");
   });
 
   it("carries the note into the event body as well as its title", () => {
@@ -113,7 +114,7 @@ describe("buildScheduleIcs", () => {
     })!;
     // Long lines are folded as "\r\n " — unfold before reading the value.
     const unfolded = ics.replace(/\r\n /g, "");
-    expect(unfolded).toContain("SUMMARY:Plan Q4\\, then email Ana\\; no calls\\nEver");
+    expect(unfolded).toContain("SUMMARY:Fully Charged · Plan Q4\\, then email Ana\\; no calls\\nEver");
     expect(unfolded.split("\r\n").filter((l) => l.startsWith("SUMMARY"))).toHaveLength(1);
   });
 

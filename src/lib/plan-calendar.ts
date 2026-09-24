@@ -101,7 +101,10 @@ export function buildScheduleIcs({
       `DTSTART:${icsFloating(start)}`,
       `DTEND:${icsFloating(end)}`,
       `RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=${OCCURRENCES}`,
-      `SUMMARY:${escapeIcsText(block.note || block.task)}`,
+      // Charge level first, then their own words if they wrote any (Josh,
+      // 2026-09-24): in a phone's calendar list the title is all you see, and
+      // "Coding" alone doesn't say those are the client's best hours.
+      `SUMMARY:${escapeIcsText(`${block.zone} · ${block.note || block.task}`)}`,
       // The client's own words first: some calendars show only the body in a
       // notification, and that's the part they wrote for themselves.
       `DESCRIPTION:${escapeIcsText(
@@ -114,7 +117,7 @@ export function buildScheduleIcs({
         "BEGIN:VALARM",
         "TRIGGER:PT0S",
         "ACTION:DISPLAY",
-        `DESCRIPTION:${escapeIcsText(block.note || block.task)}`,
+        `DESCRIPTION:${escapeIcsText(`${block.zone} · ${block.note || block.task}`)}`,
         "END:VALARM",
       );
     }
