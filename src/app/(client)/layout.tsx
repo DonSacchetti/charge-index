@@ -30,8 +30,12 @@ export default async function ClientLayout({ children }: { children: ReactNode }
     const logSession = inProgress ?? sessions?.[0];
     const paid = new Set((purchases ?? []).map((p) => p.session_id));
     const isStaff = profile?.role === "coach" || profile?.role === "admin";
-    // Staff can open any Peak Plan without buying one (see canViewPeakPlan), so the tab isn't locked for them.
-    const planned = sessions?.find((s) => paid.has(s.id)) ?? (isStaff ? completed : undefined);
+    // The newest session with a plan, so the tab and the Home tiles agree.
+    // Staff can open any Peak Plan without buying one (see canViewPeakPlan),
+    // so for them every completed session counts. Sessions are ordered newest
+    // first — picking a purchased session before a newer one sent Josh's tab
+    // to an older plan than his tiles did (2026-09-24).
+    const planned = sessions?.find((s) => paid.has(s.id) || (isStaff && s.status === "completed"));
     nav = {
       name: profile?.full_name ?? null,
       logHref: logSession ? `/track/${logSession.id}` : null,
