@@ -84,7 +84,9 @@ export default async function CompletePage({
 
       <PageBody>
         <div className="grid items-start gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="flex flex-col gap-6">
+          {/* min-w-0: the curve's SVG has a min width and would otherwise
+              stretch this column past the viewport on a phone. */}
+          <div className="flex min-w-0 flex-col gap-6">
             {hasEnoughData ? (
               <Surface className="p-6 sm:p-8" accent={100}>
                 <SectionLabel>Your session, free</SectionLabel>

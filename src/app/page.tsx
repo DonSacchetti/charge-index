@@ -18,7 +18,7 @@ const PAINS = [
 
 const STEPS = [
   { n: "01", t: "Complete the Charge Index", d: "Five to seven days, one tap an hour — five for a working week, seven if you want the whole picture." },
-  { n: "02", t: "See your charge pattern", d: "Your curve and peak windows are mapped the moment you finish. No forms, no waiting, no sending anything anywhere." },
+  { n: "02", t: "See your charge pattern", d: "Your curve and your two peak hours appear the moment you finish. No forms, no waiting, no sending anything anywhere." },
   { n: "03", t: "Turn it into a Peak Plan", d: "Take the automated Basic Peak Plan, or book a Peak Plan Session and we build the detailed version together." },
   { n: "04", t: "Implement and adjust weekly", d: "Small changes, big impact. Keep an accountability partner, or continue with me as your Time Strategy coach." },
 ];
@@ -38,7 +38,7 @@ const TIERS = [
     name: "Charge Index™",
     price: "Free",
     desc: "Measure first. Everything else depends on this.",
-    items: ["Five to seven days of one-tap tracking", "Your charge curve, hour by hour", "Your peak windows, identified — yours to keep"],
+    items: ["Five to seven days of one-tap tracking", "Your charge curve, hour by hour", "Your two peak hours, identified — yours to keep"],
     cta: "Start tracking",
     href: "/signup",
     featured: false,
@@ -115,7 +115,7 @@ export default async function Home() {
               low-performance time of day.
             </p>
             <p className="animate-rise mt-4 max-w-xl text-[15px] leading-[1.7] text-white/65 [animation-delay:220ms]">
-              Track your charge for five to seven days and see your peak windows, free. Turn them into a Peak Plan™
+              Track your charge for five to seven days and see your curve and your peak hours, free. Turn them into a Peak Plan™
               when you are ready.
             </p>
             <div className="animate-rise mt-9 flex flex-wrap gap-3 [animation-delay:300ms]">

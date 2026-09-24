@@ -145,6 +145,36 @@ try {
   expect((await count(alice.db, "reminder_log", "session_id", aliceSession)) === 0, "client cannot read the reminder log, even for their own session");
   expect(denied(await alice.db.from("reminder_log").insert({ session_id: aliceSession, day_number: 2, reminder_key: "forged" })), "client cannot write the reminder log");
   expect(denied(await coach.db.from("reminder_log").insert({ session_id: aliceSession, day_number: 2, reminder_key: "forged" })), "coach cannot write the reminder log either (server-only)");
+  console.log("\nPacing — a day can't be filled in before its date");
+  // alice's session starts today, so day 1 is open and day 2 is not.
+  expect(!(await alice.db.from("daily_entries").upsert({ session_id: aliceSession, day_number: 1, slot_hour: "10:00", energy_pct: 50 }, { onConflict: "session_id,day_number,slot_hour" })).error, "client can log today's day");
+  expect(denied(await alice.db.from("daily_entries").insert({ session_id: aliceSession, day_number: 2, slot_hour: "09:00", energy_pct: 100 })), "client cannot log a day that hasn't arrived");
+  expect(denied(await alice.db.from("daily_notes").insert({ session_id: aliceSession, day_number: 3, feel_note: "early" })), "client cannot write a reflection for a future day");
+  // A session that started two days ago: days 1–3 open, days 4–5 not.
+  const { data: older } = await admin
+    .from("tracking_sessions")
+    .insert({ client_id: alice.id, label: "rls-check", wake_time: "06:00", sleep_time: "22:00", day_count: 5, start_date: new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10) })
+    .select("id")
+    .single();
+  expect(!(await alice.db.from("daily_entries").insert({ session_id: older.id, day_number: 1, slot_hour: "09:00", energy_pct: 75 })).error, "client can still fill in an earlier day they missed");
+  expect(!(await alice.db.from("daily_entries").insert({ session_id: older.id, day_number: 3, slot_hour: "09:00", energy_pct: 75 })).error, "and today's day of that session");
+  expect(denied(await alice.db.from("daily_entries").insert({ session_id: older.id, day_number: 4, slot_hour: "09:00", energy_pct: 75 })), "but still not tomorrow's");
+
+  console.log("\nOne Charge Index per client");
+  expect(denied(await bob.db.from("tracking_sessions").insert({ client_id: bob.id, label: "rls-check", wake_time: "06:00", sleep_time: "22:00", day_count: 5 })) === false, "a client's first session is allowed");
+  expect(denied(await bob.db.from("tracking_sessions").insert({ client_id: bob.id, label: "rls-check", wake_time: "06:00", sleep_time: "22:00", day_count: 5 })), "a client cannot start a second session on their own");
+  expect(denied(await bob.db.from("session_grants").insert({ client_id: bob.id, granted_by: bob.id })), "a client cannot grant themselves another session");
+  expect(denied(await bob.db.from("session_grants").insert({ client_id: bob.id, granted_by: coach.id })), "a client cannot forge a grant from a coach either");
+  const grant = await coach.db.from("session_grants").insert({ client_id: bob.id, granted_by: coach.id }).select("id").single();
+  expect(!grant.error, "a coach can reopen tracking for a client");
+  expect(!(await bob.db.from("tracking_sessions").insert({ client_id: bob.id, label: "rls-check", wake_time: "06:00", sleep_time: "22:00", day_count: 5 })).error, "the client can start one more session after that");
+  expect(denied(await bob.db.from("tracking_sessions").insert({ client_id: bob.id, label: "rls-check", wake_time: "06:00", sleep_time: "22:00", day_count: 5 })), "and no more than one");
+  expect((await count(alice.db, "session_grants", "client_id", bob.id)) === 0, "a client cannot read another client's grants");
+  expect(!(await coach.db.from("tracking_sessions").insert({ client_id: coach.id, label: "rls-check", wake_time: "06:00", sleep_time: "22:00", day_count: 5 })).error && !(await coach.db.from("tracking_sessions").insert({ client_id: coach.id, label: "rls-check", wake_time: "06:00", sleep_time: "22:00", day_count: 5 })).error, "coaches aren't limited — Jen tracks her own energy");
+
+  console.log("\nEntry stats view");
+  expect((await coach.db.from("session_entry_stats").select("session_id").eq("session_id", aliceSession)).data?.length === 1, "coach reads a client's entry counts");
+  expect((await bob.db.from("session_entry_stats").select("session_id").eq("session_id", aliceSession)).data?.length === 0, "a client cannot read another client's entry counts through the view");
 } catch (error) {
   fail(`script error: ${error.message}`);
 } finally {

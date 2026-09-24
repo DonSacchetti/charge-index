@@ -58,7 +58,10 @@ async function makeUser(tag, role = "client") {
   return { id: data.user.id, email, cookie };
 }
 
-async function makeSession(clientId, label, shape, { wake = 8, days = 3, dayCount = 5 } = {}) {
+// days defaults to 5 so a seeded session clears MIN_HOURS_FOR_RESULT (35) and
+// the results screen generates — below that it withholds everything (Jen,
+// 2026-09-24), which is checked separately below.
+async function makeSession(clientId, label, shape, { wake = 8, days = 7, dayCount = 7 } = {}) {
   const sleep = (wake + shape.length) % 24;
   const { data: s, error } = await admin
     .from("tracking_sessions")
@@ -132,6 +135,16 @@ try {
   r = await get(`/coach/sessions/${alicePaid}/export.csv`, alice);
   expect(r.status === 404, "client cannot download the coach CSV, even for own session");
 
+  console.log("\nToo little data to generate anything");
+  // A separate client, so the bulk-export counts below stay predictable.
+  const thin = await makeUser("thin");
+  const thinSession = await makeSession(thin.id, "Thin week", peakShape, { days: 2, dayCount: 5 });
+  await buy(thin.id, thinSession);
+  r = await get(`/track/${thinSession}/complete`, thin);
+  expect(r.status === 200 && r.body.includes("Not enough hours yet"), "a session under 35 hours says so");
+  expect(!r.body.includes("Your peak hours"), "and names no peak hours");
+  expect(!r.body.includes("Unlock my plan") && !r.body.includes("View my Peak Plan"), "and offers no plan, even to a client who has paid");
+
   console.log("\nOther clients");
   r = await get(`/plan/${bobSession}`, bob);
   expect(r.status === 404, "a pending purchase doesn't unlock the plan");
@@ -201,10 +214,11 @@ try {
   const rows = r.body.replace(/^\uFEFF/, "").trimEnd().split("\r\n").slice(1).map((l) => l.match(/"((?:[^"]|"")*)"/g).map((c) => c.slice(1, -1)));
   const loggedTotal = rows.reduce((sum, cells) => sum + Number(cells[7]), 0);
   expect(r.status === 200 && rows.length === 9, `client summary CSV has a row per session (${rows.length})`);
-  expect(loggedTotal === 1120 + 18, `summary counts every entry past the 1,000-row cap (${loggedTotal} of 1138)`);
+  // Bob's own session adds 7 days × 6 hours on top of the bulk 1,120.
+  expect(loggedTotal === 1120 + 42, `summary counts every entry past the 1,000-row cap (${loggedTotal} of 1162)`);
   r = await get("/coach/export/sessions.csv", coach);
   const allRows = r.body.split("\r\n").filter((l) => l.includes("access-check-") && l.includes(String(stamp)));
-  expect(r.status === 200 && allRows.length === 13, `all-sessions export includes every test session (${allRows.length} of 13)`);
+  expect(r.status === 200 && allRows.length === 14, `all-sessions export includes every test session (${allRows.length} of 14)`);
 } catch (error) {
   fail(`script error: ${error.message}`);
 } finally {
