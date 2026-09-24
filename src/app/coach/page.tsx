@@ -15,9 +15,11 @@ export default async function CoachRoster({ searchParams }: PageProps<"/coach">)
   const query = typeof q === "string" ? q : "";
 
   const data = await loadRosterData(supabase);
-  const all = buildRoster(data.profiles, data.sessions, data.draftSessionIds, data.noteClientIds);
+  const all = buildRoster(data.profiles, data.sessions, data.draftSessionIds, data.noteClientIds, data.entryStats);
   const clients = filterRoster(all, query);
   const active = all.filter((c) => c.latest?.status === "in_progress").length;
+  // Clients logging 100% nearly every hour — Jen wants these visible (2026-09-24).
+  const flagged = all.filter((c) => c.flatTop).length;
 
   return (
     <CoachShell>
@@ -34,11 +36,12 @@ export default async function CoachRoster({ searchParams }: PageProps<"/coach">)
             Export all (CSV)
           </a>
         </div>
-        <dl className="m-0 mt-7 grid grid-cols-3 gap-3">
+        <dl className="m-0 mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { label: all.length === 1 ? "client" : "clients", value: all.length, level: 75 },
             { label: data.sessions.length === 1 ? "session" : "sessions", value: data.sessions.length, level: 100 },
             { label: "tracking now", value: active, level: 25 },
+            { label: flagged === 1 ? "to review" : "to review", value: flagged, level: 10 },
           ].map((s, i) => (
             <div key={s.label} className="animate-rise rounded-2xl border border-white/10 bg-white/[0.07] px-4 py-4 backdrop-blur" style={{ animationDelay: `${120 + i * 70}ms` }}>
               <dd className="m-0 font-serif text-[34px] leading-none font-semibold" style={{ color: `var(--color-glow-${s.level})` }}>
@@ -91,6 +94,14 @@ export default async function CoachRoster({ searchParams }: PageProps<"/coach">)
                       <Link href={`/coach/clients/${c.id}`} className="font-extrabold text-navy underline">
                         {c.name}
                       </Link>
+                      {c.flatTop ? (
+                        <span
+                          className="ml-2 rounded-full bg-level-100/12 px-[7px] py-[2px] text-[10px] font-extrabold tracking-[0.05em] text-level-100 uppercase"
+                          title={`${c.hoursLogged} hours logged, nearly all at 100% — worth a coaching call about energy vs brain activity`}
+                        >
+                          ⚡ always 100%
+                        </span>
+                      ) : null}
                       {c.role !== "client" ? (
                         <span className="ml-2 rounded-full bg-[#f4ecdf] px-[7px] py-[2px] text-[10px] font-extrabold tracking-[0.05em] text-gold-deep uppercase">
                           {c.role}

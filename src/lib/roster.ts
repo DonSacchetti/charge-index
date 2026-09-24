@@ -5,7 +5,7 @@
 
 import { csvCell } from "@/lib/peak-plan";
 import { formatHour } from "@/lib/slots";
-import { formatWindow, type Windows } from "@/lib/weekly-map";
+import { formatWindow, isFlatTopCounts, type Windows } from "@/lib/weekly-map";
 
 export type RosterProfile = {
   id: string;
@@ -14,6 +14,9 @@ export type RosterProfile = {
   created_at: string;
   role: "client" | "coach" | "admin";
 };
+
+/** Per-session counts from the session_entry_stats view. */
+export type EntryStat = { client_id: string; hours_logged: number; top_hours: number };
 
 export type RosterSession = {
   id: string;
@@ -36,6 +39,13 @@ export type RosterClient = {
   latest: RosterSession | null;
   draftCount: number;
   noteCount: number;
+  hoursLogged: number;
+  /**
+   * Logging 100% for almost every hour. Jen asked to see this on the roster
+   * (2026-09-24): it usually means the person is reading energy rather than
+   * brain activity, which is a coaching call, not a scheduling fix.
+   */
+  flatTop: boolean;
 };
 
 /**
@@ -51,7 +61,18 @@ export function buildRoster(
   sessions: RosterSession[],
   draftSessionIds: Set<string>,
   noteClientIds: string[],
+  entryStats: EntryStat[] = [],
 ): RosterClient[] {
+  // Across every session a client has logged — the flag is about the person's
+  // reading of their own energy, not one week of it.
+  const logged = new Map<string, { hours: number; top: number }>();
+  for (const stat of entryStats) {
+    const acc = logged.get(stat.client_id) ?? { hours: 0, top: 0 };
+    acc.hours += stat.hours_logged;
+    acc.top += stat.top_hours;
+    logged.set(stat.client_id, acc);
+  }
+
   const byClient = new Map<string, RosterSession[]>();
   for (const s of sessions) {
     if (!byClient.has(s.client_id)) byClient.set(s.client_id, []);
@@ -67,6 +88,7 @@ export function buildRoster(
     .filter((p) => p.role === "client" || byClient.has(p.id))
     .map((p) => {
       const own = (byClient.get(p.id) ?? []).sort(newest);
+      const hours = logged.get(p.id) ?? { hours: 0, top: 0 };
       return {
         id: p.id,
         name: p.full_name?.trim() || "Unnamed client",
@@ -78,6 +100,8 @@ export function buildRoster(
         latest: own[0] ?? null,
         draftCount: own.filter((s) => draftSessionIds.has(s.id)).length,
         noteCount: notes.get(p.id) ?? 0,
+        hoursLogged: hours.hours,
+        flatTop: isFlatTopCounts(hours.hours, hours.top),
       };
     })
     .sort((a, b) => {

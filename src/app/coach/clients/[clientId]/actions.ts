@@ -43,3 +43,21 @@ export async function deleteNote(clientId: string, noteId: string) {
   await supabase.from("coach_notes").delete().eq("id", noteId).eq("client_id", clientId);
   revalidatePath(`/coach/clients/${clientId}`);
 }
+
+/**
+ * Reopen tracking for a client — Jen's rule: one Charge Index each, and she
+ * decides when someone measures again (2026-09-24). Each grant is one extra
+ * session and stays on the record, so "who reopened this, and when" survives.
+ */
+export async function grantSession(clientId: string) {
+  const { supabase, user } = await requireCoach(`/coach/clients/${clientId}`);
+  await supabase.from("session_grants").insert({ client_id: clientId, granted_by: user.id });
+  revalidatePath(`/coach/clients/${clientId}`);
+}
+
+/** Take back a grant the client hasn't used yet. */
+export async function revokeSession(clientId: string, grantId: string) {
+  const { supabase } = await requireCoach(`/coach/clients/${clientId}`);
+  await supabase.from("session_grants").delete().eq("id", grantId).eq("client_id", clientId);
+  revalidatePath(`/coach/clients/${clientId}`);
+}

@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
+import { formatDayDate, sessionDays, unlockedDayCount } from "@/lib/days";
 import { type DayLog, emptyDay, resumeDay } from "@/lib/progress";
 import { buildSessionSlots, hourOf } from "@/lib/slots";
 import { createClient } from "@/lib/supabase/server";
@@ -24,7 +25,7 @@ export default async function TrackPage({
   const [{ data: session }, { data: entries }, { data: notes }] = await Promise.all([
     supabase
       .from("tracking_sessions")
-      .select("id, label, wake_time, sleep_time, day_count")
+      .select("id, label, wake_time, sleep_time, day_count, start_date, timezone")
       .eq("id", sessionId)
       .maybeSingle(),
     supabase
@@ -57,11 +58,17 @@ export default async function TrackPage({
     d.forJen = n.for_jen_note ?? "";
   }
 
+  // A day opens on its own date, in the client's own timezone (Jen,
+  // 2026-09-24). The database enforces this too; here it decides which day
+  // the screen opens on and which tabs are tappable.
+  const dayDates = sessionDays(session.start_date, session.day_count).map((d) => formatDayDate(d.date));
+  const unlockedDays = unlockedDayCount(session.start_date, session.day_count, session.timezone);
+
   const requested = Number(dayParam);
   const initialDay =
     Number.isInteger(requested) && requested >= 1 && requested <= session.day_count
       ? requested - 1
-      : resumeDay(days, hours.length);
+      : Math.min(resumeDay(days, hours.length), unlockedDays - 1);
 
   return (
     <CheckIn
@@ -71,6 +78,8 @@ export default async function TrackPage({
       hours={hours}
       initialDays={days}
       initialDay={initialDay}
+      dayDates={dayDates}
+      unlockedDays={unlockedDays}
     />
   );
 }

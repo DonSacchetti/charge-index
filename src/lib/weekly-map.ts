@@ -155,5 +155,10 @@ export function topLevelShare(entries: Entry[]): number {
 export const FLAT_TOP_SHARE = 0.8;
 
 export function isFlatTop(entries: Entry[]): boolean {
-  return entries.length >= MIN_HOURS_FOR_RESULT && topLevelShare(entries) >= FLAT_TOP_SHARE;
+  return isFlatTopCounts(entries.length, entries.filter((e) => e.pct === 100).length);
+}
+
+/** Same rule from counts alone, for the roster's per-session totals. */
+export function isFlatTopCounts(hoursLogged: number, topHours: number): boolean {
+  return hoursLogged >= MIN_HOURS_FOR_RESULT && topHours / hoursLogged >= FLAT_TOP_SHARE;
 }

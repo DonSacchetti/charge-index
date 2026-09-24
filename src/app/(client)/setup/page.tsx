@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { PageBody, PageHero, SectionLabel, Surface } from "@/components/AppShell";
+import { BOOK_CALL_URL } from "@/components/brand/SiteHeader";
 import { buildSessionSlots, formatHour, hourOf } from "@/lib/slots";
 import { createClient } from "@/lib/supabase/server";
 
@@ -14,17 +15,27 @@ export default async function SetupPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/setup");
 
-  const [{ data: profile }, { data: sessions }] = await Promise.all([
+  const [{ data: profile }, { data: sessions }, { count: grantCount }] = await Promise.all([
     supabase.from("profiles").select("full_name, role").eq("id", user.id).single(),
     supabase
       .from("tracking_sessions")
       .select("id, label, day_count, status, start_date, wake_time, sleep_time, daily_entries(count)")
       .eq("client_id", user.id)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("session_grants")
+      .select("id", { count: "exact", head: true })
+      .eq("client_id", user.id),
   ]);
 
   const first = profile?.full_name?.trim().split(/\s+/)[0];
   const returning = (sessions?.length ?? 0) > 0;
+  // One Charge Index per client; Jen reopens tracking by granting another
+  // (Jen, 2026-09-24). Staff aren't limited. The database enforces this —
+  // can_start_session() in 20260924143000_pacing_and_session_limit.sql.
+  const isStaff = profile?.role === "coach" || profile?.role === "admin";
+  const canStart = isStaff || (sessions?.length ?? 0) < 1 + (grantCount ?? 0);
+  const latest = sessions?.[0];
 
   return (
     <>
@@ -104,7 +115,9 @@ export default async function SetupPage() {
                     );
                   })}
                 </ul>
-                <p className="mt-4 text-[12px] text-muted">Starting a new session won&rsquo;t touch these.</p>
+                <p className="mt-4 text-[12px] text-muted">
+                  {canStart ? "Starting a new session won’t touch these." : "Your entries stay here, yours to revisit any time."}
+                </p>
               </Surface>
             ) : null}
 
@@ -132,11 +145,40 @@ export default async function SetupPage() {
             </Surface>
           </div>
 
-          <Surface className="p-6 sm:p-8" accent="spectrum" delay={60}>
-            <h2 className="font-serif text-[28px] font-semibold text-navy">{returning ? "Start a new session" : "Set up your session"}</h2>
-            <p className="mt-1 mb-6 text-[13.5px] text-muted">Two minutes, then one tap an hour.</p>
-            <SetupForm defaultName={profile?.full_name ?? ""} email={user.email ?? ""} />
-          </Surface>
+          {canStart ? (
+            <Surface className="p-6 sm:p-8" accent="spectrum" delay={60}>
+              <h2 className="font-serif text-[28px] font-semibold text-navy">{returning ? "Start a new session" : "Set up your session"}</h2>
+              <p className="mt-1 mb-6 text-[13.5px] text-muted">Two minutes, then one tap an hour.</p>
+              <SetupForm defaultName={profile?.full_name ?? ""} email={user.email ?? ""} />
+            </Surface>
+          ) : (
+            <Surface className="p-6 sm:p-8" accent="gold" delay={60}>
+              <SectionLabel>One Charge Index each</SectionLabel>
+              <h2 className="font-serif text-[28px] font-semibold text-navy">You&rsquo;ve had your free session</h2>
+              <p className="mt-3 text-[14.5px] leading-[1.7] text-body">
+                The Charge Index is one measurement per person, so the numbers mean something. When you&rsquo;re ready to
+                measure again — a new season, a new role, a plan you want to test — Jen reopens it for you.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <a
+                  href={BOOK_CALL_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex min-h-12 items-center rounded-2xl bg-navy px-6 text-[14px] font-extrabold text-white transition hover:-translate-y-0.5"
+                >
+                  Ask Jen to reopen it
+                </a>
+                {latest ? (
+                  <Link
+                    href={latest.status === "completed" ? `/track/${latest.id}/complete` : `/track/${latest.id}`}
+                    className="inline-flex min-h-12 items-center rounded-2xl border-[1.5px] border-line bg-white px-5 text-[14px] font-extrabold text-body transition hover:border-navy hover:text-navy"
+                  >
+                    {latest.status === "completed" ? "See my results" : "Keep logging"}
+                  </Link>
+                ) : null}
+              </div>
+            </Surface>
+          )}
         </div>
       </PageBody>
     </>

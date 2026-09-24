@@ -6,21 +6,26 @@ import { NoteForm } from "@/components/coach/NoteForm";
 import { loadSessionBundles } from "@/lib/coach-data";
 import { formatHour } from "@/lib/slots";
 import { requireCoach } from "@/lib/viewer";
-import { formatWindow } from "@/lib/weekly-map";
+import { MIN_HOURS_FOR_RESULT, formatWindow, isFlatTopCounts } from "@/lib/weekly-map";
 
-import { deleteNote } from "./actions";
+import { deleteNote, grantSession, revokeSession } from "./actions";
 
 /** One client: every session with its headline numbers, Jen's notes, and exports. */
 export default async function CoachClientPage({ params }: PageProps<"/coach/clients/[clientId]">) {
   const { clientId } = await params;
   const { supabase, user } = await requireCoach(`/coach/clients/${clientId}`);
 
-  const [{ data: client }, bundles, { data: notes }] = await Promise.all([
+  const [{ data: client }, bundles, { data: notes }, { data: grants }] = await Promise.all([
     supabase.from("profiles").select("id, full_name, email, created_at, role").eq("id", clientId).maybeSingle(),
     loadSessionBundles(supabase, clientId),
     supabase
       .from("coach_notes")
       .select("id, body, created_at, session_id, author_id, author:profiles!coach_notes_author_id_fkey(full_name)")
+      .eq("client_id", clientId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("session_grants")
+      .select("id, created_at, granted_by, granter:profiles!session_grants_granted_by_fkey(full_name)")
       .eq("client_id", clientId)
       .order("created_at", { ascending: false }),
   ]);
@@ -29,6 +34,17 @@ export default async function CoachClientPage({ params }: PageProps<"/coach/clie
   if (!client || (client.role !== "client" && bundles.length === 0)) notFound();
 
   const name = client.full_name?.trim() || "Unnamed client";
+
+  // How the client reads their own energy, across everything they've logged.
+  const hoursLogged = bundles.reduce((n, b) => n + b.entries.length, 0);
+  const topHours = bundles.reduce((n, b) => n + b.entries.filter((e) => e.pct === 100).length, 0);
+  const flatTop = isFlatTopCounts(hoursLogged, topHours);
+  const topShare = hoursLogged ? Math.round((topHours / hoursLogged) * 100) : 0;
+
+  // One session each, plus one per grant Jen has given (2026-09-24).
+  const grantCount = grants?.length ?? 0;
+  const allowance = 1 + grantCount;
+  const unusedGrants = Math.max(0, allowance - bundles.length);
   const sessionLabel = new Map(bundles.map((b) => [b.session.id, b.session.label || "Untitled session"]));
   const when = (iso: string) => new Date(iso).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" });
 
@@ -74,6 +90,62 @@ export default async function CoachClientPage({ params }: PageProps<"/coach/clie
         </div>
       </div>
 
+      {flatTop ? (
+        <Card className="mb-5" accent={100}>
+          <div className="flex flex-wrap items-start gap-4">
+            <span className="flex h-11 w-11 flex-none items-center justify-center rounded-2xl bg-level-100/12 text-[20px]" aria-hidden>
+              ⚡
+            </span>
+            <div className="min-w-0">
+              <h2 className="font-serif text-[20px] font-semibold text-navy">Fully charged nearly all day</h2>
+              <p className="mt-1 text-[13.5px] leading-[1.6] text-body">
+                {topShare}% of this client&rsquo;s {hoursLogged} logged hours are 100%. High energy all day often isn&rsquo;t
+                high brain activity all day — worth a call to build awareness before reading their schedule from this.
+              </p>
+            </div>
+          </div>
+        </Card>
+      ) : null}
+
+      <Card className="mb-5" accent="gold">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h2 className="font-serif text-[20px] font-semibold text-navy">Tracking access</h2>
+            <p className="mt-1 text-[13.5px] leading-[1.6] text-body">
+              One Charge Index each. This client has used {bundles.length} of {allowance}
+              {allowance === 1 ? " session" : " sessions"}.{" "}
+              {unusedGrants > 0
+                ? `They can start ${unusedGrants} more now.`
+                : "They can't start another until you reopen it."}
+            </p>
+          </div>
+          <form action={grantSession.bind(null, clientId)}>
+            <button
+              type="submit"
+              className="inline-flex min-h-11 items-center rounded-2xl bg-navy px-5 text-[13.5px] font-extrabold text-white transition hover:-translate-y-0.5 hover:bg-navy-light"
+            >
+              Reopen tracking
+            </button>
+          </form>
+        </div>
+        {grantCount ? (
+          <ul className="m-0 mt-4 flex list-none flex-col gap-2 border-t border-[#f0efea] p-0 pt-4">
+            {grants!.map((g) => (
+              <li key={g.id} className="flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-body">
+                <span>
+                  Reopened by <strong className="text-navy">{g.granter?.full_name || "a coach"}</strong> · {when(g.created_at)}
+                </span>
+                <form action={revokeSession.bind(null, clientId, g.id)}>
+                  <button type="submit" className="-mx-2 -my-2 inline-flex min-h-9 items-center px-2 font-bold text-muted underline hover:text-level-10">
+                    Undo
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </Card>
+
       <Card className="mb-5 p-0" accent="spectrum">
         <h2 className="px-6 pt-6 pb-3 font-serif text-[22px] font-semibold text-navy">Sessions</h2>
         {bundles.length === 0 ? (
@@ -112,6 +184,11 @@ export default async function CoachClientPage({ params }: PageProps<"/coach/clie
                       <div className="text-[11px] text-muted">
                         {b.consistency.completeDays}/{b.session.day_count} days full
                       </div>
+                      {b.entries.length < MIN_HOURS_FOR_RESULT ? (
+                        <div className="text-[11px] font-bold text-level-25">
+                          {b.entries.length}/{MIN_HOURS_FOR_RESULT} hrs — no client result
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-3 py-3 text-body">{formatWindow(b.windows.peak)}</td>
                     <td className="px-3 py-3 text-body">{formatWindow(b.windows.collaboration)}</td>

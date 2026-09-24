@@ -12,7 +12,7 @@ type Db = SupabaseClient<Database>;
 
 /** Everything the roster needs, read in pages past the 1,000-row cap. */
 export async function loadRosterData(supabase: Db) {
-  const [profiles, sessions, drafts, notes] = await Promise.all([
+  const [profiles, sessions, drafts, notes, entryStats] = await Promise.all([
     fetchAll((from, to) =>
       supabase.from("profiles").select("id, full_name, email, created_at, role").order("id").range(from, to),
     ),
@@ -25,12 +25,25 @@ export async function loadRosterData(supabase: Db) {
     ),
     fetchAll((from, to) => supabase.from("ai_insights").select("session_id").order("session_id").range(from, to)),
     fetchAll((from, to) => supabase.from("coach_notes").select("client_id").order("id").range(from, to)),
+    fetchAll((from, to) =>
+      supabase
+        .from("session_entry_stats")
+        .select("client_id, hours_logged, top_hours")
+        .order("session_id")
+        .range(from, to),
+    ),
   ]);
   return {
     profiles,
     sessions,
     draftSessionIds: new Set(drafts.map((d) => d.session_id)),
     noteClientIds: notes.map((n) => n.client_id),
+    // The view's columns are nullable to Postgres; a row always has them.
+    entryStats: entryStats.map((r) => ({
+      client_id: r.client_id ?? "",
+      hours_logged: r.hours_logged ?? 0,
+      top_hours: r.top_hours ?? 0,
+    })),
   };
 }
 

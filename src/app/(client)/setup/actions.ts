@@ -86,6 +86,15 @@ export async function createSession(
     .eq("id", user.id);
   if (profileError) return { error: profileError.message };
 
+  // One Charge Index per client unless Jen has granted another (2026-09-24).
+  // The insert policy refuses it anyway; asking first turns a raw RLS error
+  // into something the person can act on.
+  const { data: allowed } = await supabase.rpc("can_start_session");
+  if (allowed === false)
+    return {
+      error: "You've already had your Charge Index. Ask Jen to reopen tracking for you.",
+    };
+
   const { data, error } = await supabase
     .from("tracking_sessions")
     .insert({

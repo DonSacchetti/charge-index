@@ -24,6 +24,14 @@ type Props = {
   hours: number[];
   initialDays: DayLog[];
   initialDay: number;
+  /** Calendar date per day, "Mon, Sep 21", from the session's start date. */
+  dayDates: string[];
+  /**
+   * How many days are open. A day opens on its own date, so nobody can fill
+   * in a whole week in one sitting (Jen, 2026-09-24). The database enforces
+   * the same rule — this only keeps the UI honest about it.
+   */
+  unlockedDays: number;
 };
 
 type NoteField = "feel" | "unexpected" | "forJen";
@@ -43,6 +51,8 @@ export function CheckIn({
   hours,
   initialDays,
   initialDay,
+  dayDates,
+  unlockedDays,
 }: Props) {
   const supabase = useMemo(() => createClient(), []);
   const { status, enqueue, retry } = useSaveQueue();
@@ -76,10 +86,14 @@ export function CheckIn({
   const current = days[day] ?? emptyDay();
   const slotCount = hours.length;
   const dayNumber = day + 1;
+  const locked = dayNumber > unlockedDays;
+  /** True when there is a next day but it hasn't arrived yet. */
+  const nextLocked = day + 1 < dayCount && day + 2 > unlockedDays;
 
   // ── writes ──────────────────────────────────────────────────────────────
 
   const pickTile = (hour: number, value: number) => {
+    if (locked) return;
     const previous = current.slots[hour];
     // Tapping the level that's already selected clears the hour. The
     // prototype had no way to undo a mis-tap, and a mis-tapped hour would
@@ -148,6 +162,7 @@ export function CheckIn({
   );
 
   const editNote = (field: NoteField, text: string) => {
+    if (locked) return;
     setDays((all) => all.map((d, i) => (i === day ? { ...d, [field]: text } : d)));
     const existing = noteTimers.current.get(day);
     if (existing !== undefined) clearTimeout(existing);
@@ -176,6 +191,7 @@ export function CheckIn({
   }, [flushNotes]);
 
   const goToDay = (next: number) => {
+    if (next + 1 > unlockedDays) return;
     flushNotes(day);
     setDay(next);
     setOpenHour(null);
@@ -197,23 +213,34 @@ export function CheckIn({
     const n = loggedCount(d);
     const done = isComplete(d, slotCount);
     const active = i === day;
+    const shut = i + 1 > unlockedDays;
     if (layout === "chip") {
       return (
         <button
           key={i}
           type="button"
           onClick={() => goToDay(i)}
+          disabled={shut}
           aria-current={active ? "step" : undefined}
-          className={`flex min-h-11 flex-none items-center gap-2 rounded-full border-[1.5px] px-4 text-[13px] font-extrabold transition ${
-            active
-              ? "border-transparent text-white shadow-[0_8px_20px_-8px_rgba(19,36,73,0.7)]"
-              : done
-                ? "border-level-100/40 bg-level-100/8 text-level-100"
-                : "border-line bg-white text-navy"
+          title={shut ? `Opens ${dayDates[i]}` : undefined}
+          className={`flex min-h-11 flex-none flex-col items-start justify-center gap-0 rounded-2xl border-[1.5px] px-4 py-1.5 text-left transition ${
+            shut
+              ? "cursor-not-allowed border-line bg-cream text-muted"
+              : active
+                ? "border-transparent text-white shadow-[0_8px_20px_-8px_rgba(19,36,73,0.7)]"
+                : done
+                  ? "border-level-100/40 bg-level-100/8 text-level-100"
+                  : "border-line bg-white text-navy"
           }`}
-          style={active ? { background: done ? "var(--color-level-100)" : "var(--color-navy)" } : undefined}
+          style={!shut && active ? { background: done ? "var(--color-level-100)" : "var(--color-navy)" } : undefined}
         >
-          {done ? <span aria-hidden>✓</span> : null}Day {i + 1}
+          <span className="flex items-center gap-1.5 text-[13px] font-extrabold whitespace-nowrap">
+            {shut ? <span aria-hidden>🔒</span> : done ? <span aria-hidden>✓</span> : null}
+            Day {i + 1}
+          </span>
+          <span className={`text-[10.5px] font-bold whitespace-nowrap ${active && !shut ? "text-white/70" : "text-muted"}`}>
+            {dayDates[i]}
+          </span>
         </button>
       );
     }
@@ -222,14 +249,22 @@ export function CheckIn({
         key={i}
         type="button"
         onClick={() => goToDay(i)}
+        disabled={shut}
         aria-current={active ? "step" : undefined}
-        className={`group w-full rounded-2xl px-3 py-2.5 text-left transition ${active ? "bg-navy text-white" : "hover:bg-cream"}`}
+        className={`group w-full rounded-2xl px-3 py-2.5 text-left transition ${
+          shut ? "cursor-not-allowed opacity-55" : active ? "bg-navy text-white" : "hover:bg-cream"
+        }`}
       >
         <span className="flex items-center justify-between text-[13px] font-extrabold">
-          <span>Day {i + 1}</span>
-          <span className={`text-[11px] font-bold ${active ? "text-white/70" : done ? "text-level-100" : "text-muted"}`}>
-            {done ? "✓ full" : `${n}/${slotCount}`}
+          <span className="flex items-center gap-1.5">
+            {shut ? <span aria-hidden>🔒</span> : null}Day {i + 1}
           </span>
+          <span className={`text-[11px] font-bold ${active && !shut ? "text-white/70" : done ? "text-level-100" : "text-muted"}`}>
+            {shut ? "locked" : done ? "✓ full" : `${n}/${slotCount}`}
+          </span>
+        </span>
+        <span className={`mt-0.5 block text-[11px] font-bold ${active && !shut ? "text-white/60" : "text-muted"}`}>
+          {dayDates[i]}
         </span>
         <span className={`mt-1.5 block h-1.5 overflow-hidden rounded-full ${active ? "bg-white/15" : "bg-cream"}`}>
           <span
@@ -271,11 +306,15 @@ export function CheckIn({
         eyebrow={label}
         title={<>Day {dayNumber}</>}
         lead={
-          <>
-            {loggedCount(current)} of {slotCount} hours logged today · {streakText}
-          </>
+          locked ? (
+            <>This day opens on {dayDates[day]}. One day at a time keeps the pattern real.</>
+          ) : (
+            <>
+              {loggedCount(current)} of {slotCount} hours logged · {streakText}
+            </>
+          )
         }
-        badge={`Day ${dayNumber} of ${dayCount}`}
+        badge={`${dayDates[day]} · Day ${dayNumber} of ${dayCount}`}
         progress={{ total: dayCount + 2, current: dayNumber }}
       />
 
@@ -301,8 +340,31 @@ export function CheckIn({
               </div>
             ) : null}
 
+            {/* A day that hasn't arrived yet — Jen's pacing rule. */}
+            {locked ? (
+              <Surface className="p-6 text-center sm:p-10" accent={50} delay={60}>
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-cream text-[24px]" aria-hidden>
+                  🔒
+                </div>
+                <h2 className="font-serif text-[24px] font-semibold text-navy">Day {dayNumber} opens {dayDates[day]}</h2>
+                <p className="mx-auto mt-3 max-w-md text-[14px] leading-[1.7] text-body">
+                  Your Charge Index measures real days as you live them, so each day unlocks on its own date. Come back
+                  tomorrow — and if you missed an earlier day, you can still fill it in.
+                </p>
+                {unlockedDays > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => goToDay(unlockedDays - 1)}
+                    className="mt-6 inline-flex min-h-12 items-center rounded-2xl bg-navy px-6 text-[14px] font-extrabold text-white transition hover:-translate-y-0.5"
+                  >
+                    Go to day {unlockedDays}
+                  </button>
+                ) : null}
+              </Surface>
+            ) : null}
+
             {/* The grid */}
-            <Surface className="px-3 pt-5 pb-4 sm:px-6 sm:pt-6" accent="spectrum" delay={60}>
+            <Surface className={`px-3 pt-5 pb-4 sm:px-6 sm:pt-6 ${locked ? "hidden" : ""}`} accent="spectrum" delay={60}>
               <div className="mb-4 flex items-center justify-between gap-3 px-1">
                 <h2 className="font-serif text-[22px] font-semibold text-navy">One tap an hour</h2>
                 <div className="flex items-center gap-2 text-[12px] font-extrabold text-muted">
@@ -404,7 +466,7 @@ export function CheckIn({
             </Surface>
 
             {/* Reflections */}
-            <Surface className="p-5 sm:p-7" accent="gold" delay={120}>
+            <Surface className={`p-5 sm:p-7 ${locked ? "hidden" : ""}`} accent="gold" delay={120}>
               <h2 className="mb-1 font-serif text-[22px] font-semibold text-navy">Today&rsquo;s reflection</h2>
               <p className="mb-5 text-[13px] text-muted">A sentence or two is plenty.</p>
               <div className="grid gap-4 md:grid-cols-3">
@@ -427,7 +489,14 @@ export function CheckIn({
 
             <div className="lg:hidden">{legend}</div>
 
-            {/* Day navigation */}
+            {/* Day navigation. When tomorrow hasn't opened yet, the way on is
+                to come back — but finishing early stays available, since some
+                people stop at five days. */}
+            {nextLocked ? (
+              <p className="text-center text-[13px] font-bold text-muted">
+                Day {day + 2} opens {dayDates[day + 1]}.
+              </p>
+            ) : null}
             <div className="flex gap-3">
               {day > 0 ? (
                 <button
@@ -438,7 +507,7 @@ export function CheckIn({
                   Back
                 </button>
               ) : null}
-              {day < dayCount - 1 ? (
+              {day < dayCount - 1 && !nextLocked ? (
                 <button
                   type="button"
                   onClick={() => goToDay(day + 1)}
@@ -457,7 +526,7 @@ export function CheckIn({
                   }}
                   className="min-h-13 flex-1 rounded-2xl bg-gold text-center text-[15px] font-extrabold text-navy-deep shadow-[0_14px_34px_-12px_rgba(201,169,110,0.8)] transition hover:-translate-y-0.5 hover:bg-gold-bright disabled:opacity-60"
                 >
-                  {finishing ? "One moment…" : "See my results"}
+                  {finishing ? "One moment…" : nextLocked ? "Finish early and see my results" : "See my results"}
                 </button>
               )}
             </div>

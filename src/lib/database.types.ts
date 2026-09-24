@@ -75,6 +75,13 @@ export type Database = {
             foreignKeyName: "ai_insights_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: true
+            referencedRelation: "session_entry_stats"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "ai_insights_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
             referencedRelation: "tracking_sessions"
             referencedColumns: ["id"]
           },
@@ -127,6 +134,13 @@ export type Database = {
             foreignKeyName: "coach_notes_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
+            referencedRelation: "session_entry_stats"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "coach_notes_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
             referencedRelation: "tracking_sessions"
             referencedColumns: ["id"]
           },
@@ -158,6 +172,13 @@ export type Database = {
           slot_hour?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "daily_entries_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "session_entry_stats"
+            referencedColumns: ["session_id"]
+          },
           {
             foreignKeyName: "daily_entries_session_id_fkey"
             columns: ["session_id"]
@@ -196,6 +217,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "daily_notes_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "session_entry_stats"
+            referencedColumns: ["session_id"]
+          },
           {
             foreignKeyName: "daily_notes_session_id_fkey"
             columns: ["session_id"]
@@ -275,6 +303,13 @@ export type Database = {
             foreignKeyName: "purchases_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
+            referencedRelation: "session_entry_stats"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "purchases_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
             referencedRelation: "tracking_sessions"
             referencedColumns: ["id"]
           },
@@ -303,6 +338,13 @@ export type Database = {
           session_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "reminder_log_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "session_entry_stats"
+            referencedColumns: ["session_id"]
+          },
           {
             foreignKeyName: "reminder_log_session_id_fkey"
             columns: ["session_id"]
@@ -336,7 +378,53 @@ export type Database = {
             foreignKeyName: "session_analysis_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: true
+            referencedRelation: "session_entry_stats"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "session_analysis_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
             referencedRelation: "tracking_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session_grants: {
+        Row: {
+          client_id: string
+          created_at: string
+          granted_by: string
+          id: string
+          note: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          granted_by: string
+          id?: string
+          note?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          granted_by?: string
+          id?: string
+          note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_grants_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_grants_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -393,10 +481,31 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      session_entry_stats: {
+        Row: {
+          client_id: string | null
+          hours_logged: number | null
+          session_id: string | null
+          top_hours: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracking_sessions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      can_start_session: { Args: never; Returns: boolean }
       is_coach: { Args: never; Returns: boolean }
+      session_day_unlocked: {
+        Args: { p_day: number; p_session: string }
+        Returns: boolean
+      }
     }
     Enums: {
       purchase_product: "basic_peak_plan" | "peak_plan_session" | "coaching"
