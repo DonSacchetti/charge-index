@@ -65,7 +65,9 @@ async function seedSession(user) {
   await user.db.from("daily_notes").insert({ session_id: session.id, day_number: 1, for_jen_note: "private" });
   await admin.from("session_analysis").insert({ session_id: session.id, windows: {} });
   await admin.from("ai_insights").insert({ session_id: session.id, energy_type: "check" });
-  await admin.from("purchases").insert({ client_id: user.id, product: "basic_peak_plan", status: "completed" });
+  // Tied to this session: both canViewPeakPlan() and has_peak_plan() match on
+  // session_id, so a purchase without one unlocks nothing.
+  await admin.from("purchases").insert({ client_id: user.id, session_id: session.id, product: "basic_peak_plan", status: "completed" });
   return session.id;
 }
 
@@ -171,6 +173,19 @@ try {
   expect(denied(await bob.db.from("tracking_sessions").insert({ client_id: bob.id, label: "rls-check", wake_time: "06:00", sleep_time: "22:00", day_count: 5 })), "and no more than one");
   expect((await count(alice.db, "session_grants", "client_id", bob.id)) === 0, "a client cannot read another client's grants");
   expect(!(await coach.db.from("tracking_sessions").insert({ client_id: coach.id, label: "rls-check", wake_time: "06:00", sleep_time: "22:00", day_count: 5 })).error && !(await coach.db.from("tracking_sessions").insert({ client_id: coach.id, label: "rls-check", wake_time: "06:00", sleep_time: "22:00", day_count: 5 })).error, "coaches aren't limited — Jen tracks her own energy");
+
+  console.log("\nPeak Plan notes — a paid feature, client-written only");
+  // seedSession() already gave alice a completed basic_peak_plan purchase.
+  expect(!(await alice.db.from("plan_notes").upsert({ session_id: aliceSession, slot_hour: "09:00", body: "Deep work" }, { onConflict: "session_id,slot_hour" })).error, "a client with the plan can write a note on their own hour");
+  expect((await count(coach.db, "plan_notes", "session_id", aliceSession)) === 1, "the coach can read it");
+  expect(denied(await coach.db.from("plan_notes").upsert({ session_id: aliceSession, slot_hour: "10:00", body: "coach wrote this" }, { onConflict: "session_id,slot_hour" })), "the coach cannot write in the client's plan");
+  expect((await count(bob.db, "plan_notes", "session_id", aliceSession)) === 0, "another client cannot read it");
+  expect(denied(await bob.db.from("plan_notes").insert({ session_id: aliceSession, slot_hour: "11:00", body: "forged" })), "another client cannot write in it");
+  expect(!(await bob.db.from("plan_notes").delete().eq("session_id", aliceSession)).error && (await count(admin, "plan_notes", "session_id", aliceSession)) === 1, "and deleting it removes nothing");
+  // Bob has sessions of his own but has never bought a plan.
+  const { data: bobSession } = await bob.db.from("tracking_sessions").select("id").eq("client_id", bob.id).limit(1).single();
+  expect(denied(await bob.db.from("plan_notes").insert({ session_id: bobSession.id, slot_hour: "09:00", body: "unpaid" })), "a client without the plan cannot write notes on their own session either");
+  expect(!(await alice.db.from("plan_notes").delete().match({ session_id: aliceSession, slot_hour: "09:00" })).error, "the client can clear their own note");
 
   console.log("\nEntry stats view");
   expect((await coach.db.from("session_entry_stats").select("session_id").eq("session_id", aliceSession)).data?.length === 1, "coach reads a client's entry counts");

@@ -233,6 +233,45 @@ export type Database = {
           },
         ]
       }
+      plan_notes: {
+        Row: {
+          body: string
+          id: string
+          session_id: string
+          slot_hour: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          id?: string
+          session_id: string
+          slot_hour: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          id?: string
+          session_id?: string
+          slot_hour?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_notes_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "session_entry_stats"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "plan_notes_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "tracking_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -501,6 +540,7 @@ export type Database = {
     }
     Functions: {
       can_start_session: { Args: never; Returns: boolean }
+      has_peak_plan: { Args: { p_session: string }; Returns: boolean }
       is_coach: { Args: never; Returns: boolean }
       session_day_unlocked: {
         Args: { p_day: number; p_session: string }

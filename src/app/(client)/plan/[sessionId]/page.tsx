@@ -2,9 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PrintButton } from "@/components/PrintButton";
+import { ScheduleEditor } from "@/components/plan/ScheduleEditor";
 import { PLAN_WINDOWS, planGuards, planSchedule } from "@/lib/peak-plan";
 import { loadSessionAnalysis } from "@/lib/session-data";
-import { formatHourLong } from "@/lib/slots";
+import { hourOf } from "@/lib/slots";
 import { canViewPeakPlan, requireViewer } from "@/lib/viewer";
 import { formatWindow } from "@/lib/weekly-map";
 
@@ -25,6 +26,17 @@ export default async function PeakPlanPage({ params }: PageProps<"/plan/[session
   const { session, clientName, map, windows } = data;
   const schedule = planSchedule(map);
   const guards = planGuards(windows);
+
+  // What the client wrote against each hour (Josh, 2026-09-24). Coaches see
+  // them; only the client who bought the plan can write them (RLS).
+  const { data: planNotes } = await viewer.supabase
+    .from("plan_notes")
+    .select("slot_hour, body")
+    .eq("session_id", sessionId);
+  const noteByHour = new Map((planNotes ?? []).map((n) => [hourOf(n.slot_hour), n.body]));
+  const items = schedule.map((s) => ({ ...s, note: noteByHour.get(s.hour) ?? null }));
+  const canEdit = !viewer.isCoach && session.client_id === viewer.user.id;
+  const hasSchedule = items.some((i) => i.zone !== "—");
   const backHref = viewer.isCoach ? `/coach/sessions/${sessionId}` : `/track/${sessionId}/complete`;
 
   const meta = [
@@ -42,19 +54,26 @@ export default async function PeakPlanPage({ params }: PageProps<"/plan/[session
         </Link>
         <div className="flex flex-wrap items-center gap-2">
           <PrintButton>Print or save as PDF</PrintButton>
-          {windows.peak.length ? (
+          {hasSchedule ? (
             <a
-              href={`/plan/${sessionId}/peak-plan.ics`}
+              href={`/plan/${sessionId}/schedule.ics`}
               className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-gold px-5 text-[13.5px] font-extrabold text-navy-deep shadow-[0_10px_26px_-12px_rgba(201,169,110,0.9)] transition hover:-translate-y-0.5 hover:bg-gold-bright"
             >
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>
                 <rect x="4" y="5" width="16" height="15" rx="2" />
                 <path d="M8 3v4M16 3v4M4 10h16" />
               </svg>
-              Calendar file
+              Add my schedule to my calendar
             </a>
           ) : (
-            <span className="text-[11.5px] text-muted">No peak window yet, so no calendar block to add.</span>
+            <span className="text-[11.5px] text-muted">No tracked hours yet, so there&rsquo;s nothing to add.</span>
+          )}
+          {windows.peak.length ? (
+            <a href={`/plan/${sessionId}/peak-plan.ics`} className="inline-flex min-h-11 items-center px-2 text-[12.5px] font-extrabold text-navy underline">
+              Just my peak block
+            </a>
+          ) : (
+            <span className="text-[11.5px] text-muted">No peak window yet — the file still carries the rest of your schedule.</span>
           )}
         </div>
       </div>
@@ -89,23 +108,7 @@ export default async function PeakPlanPage({ params }: PageProps<"/plan/[session
           <p className="mb-[18px] text-[12.5px] leading-[1.6] text-muted">
             Match the work to the charge. This is the schedule your own data asks for.
           </p>
-          <ol className="m-0 mb-[34px] flex list-none flex-col gap-[5px] p-0">
-            {schedule.map((s) => (
-              <li
-                key={s.hour}
-                className="grid grid-cols-[84px_1fr] items-baseline gap-3 rounded-r-xl border-l-4 px-4 py-[9px] print:break-inside-avoid"
-                style={{ borderColor: s.color, background: s.tint }}
-              >
-                <span className="text-[13px] font-extrabold text-navy">{formatHourLong(s.hour)}</span>
-                <span className="flex flex-wrap items-baseline justify-between gap-x-[14px]">
-                  <span className="text-[13.5px] font-bold text-ink">{s.task}</span>
-                  <span className="text-[10.5px] font-extrabold tracking-[0.08em] uppercase" style={{ color: s.color }}>
-                    {s.zone}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ol>
+          <ScheduleEditor sessionId={sessionId} items={items} canEdit={canEdit} />
 
           <div className="grid gap-7 md:grid-cols-2 print:grid-cols-2 print:break-inside-avoid">
             <div>

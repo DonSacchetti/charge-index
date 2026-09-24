@@ -7,6 +7,7 @@ import {
   exportFilename,
   planGuards,
   planSchedule,
+  escapeIcsText,
 } from "@/lib/peak-plan";
 
 describe("planGuards", () => {
@@ -135,5 +136,17 @@ describe("exportFilename", () => {
   it("makes a safe filename from the client name", () => {
     expect(exportFilename("Sarah O'Neil", "ChargeIndex.csv")).toBe("Sarah_O_Neil_ChargeIndex.csv");
     expect(exportFilename(null, "PeakPlan.ics")).toBe("client_PeakPlan.ics");
+  });
+});
+
+describe("escapeIcsText", () => {
+  it("escapes the characters RFC 5545 reserves in TEXT values", () => {
+    expect(escapeIcsText("a,b")).toBe("a\\,b");
+    // Regression: this was written "\\;" in a JS string, which is just ";",
+    // so semicolons went through unescaped until 2026-09-24.
+    expect(escapeIcsText("a;b")).toBe("a\\;b");
+    expect(escapeIcsText("a\\b")).toBe("a\\\\b");
+    expect(escapeIcsText("a\nb")).toBe("a\\nb");
+    expect(escapeIcsText("a\r\nb")).toBe("a\\nb");
   });
 });

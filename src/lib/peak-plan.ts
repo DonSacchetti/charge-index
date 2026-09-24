@@ -76,7 +76,9 @@ export const icsUtcStamp = (d: Date) => `${icsFloating(d)}Z`;
 
 /** RFC 5545 §3.3.11 text escaping. */
 export const escapeIcsText = (s: string) =>
-  s.replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+  // "\;" in a JS string is just ";" — the semicolon went through unescaped
+  // until 2026-09-24, which client-written plan notes would have exposed.
+  s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
 
 /** RFC 5545 §3.1: fold content lines longer than 75 octets, never mid-character. */
 export function foldIcsLine(line: string): string {
