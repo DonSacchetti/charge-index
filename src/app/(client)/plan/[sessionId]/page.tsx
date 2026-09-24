@@ -70,34 +70,13 @@ export default async function PeakPlanPage({ params }: PageProps<"/plan/[session
 
   return (
     <div className="mx-auto w-full max-w-[1000px] px-4 py-8 sm:px-6 print:max-w-none print:p-0">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
+      {/* Only the way back sits above the plan — the plan's own title should
+          be the first thing on the page (Josh, 2026-09-24). Everything you do
+          WITH the plan lives underneath it, where you land after reading. */}
+      <div className="mb-4 print:hidden">
         <Link href={backHref} className="inline-flex min-h-11 items-center text-[13px] font-extrabold text-navy hover:underline">
           ← Back
         </Link>
-        <div className="flex flex-wrap items-center gap-2">
-          <PrintButton>Print or save as PDF</PrintButton>
-          {hasSchedule ? (
-            <a
-              href={`/plan/${sessionId}/schedule.ics`}
-              className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-gold px-5 text-[13.5px] font-extrabold text-navy-deep shadow-[0_10px_26px_-12px_rgba(201,169,110,0.9)] transition hover:-translate-y-0.5 hover:bg-gold-bright"
-            >
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>
-                <rect x="4" y="5" width="16" height="15" rx="2" />
-                <path d="M8 3v4M16 3v4M4 10h16" />
-              </svg>
-              Add my schedule to my calendar
-            </a>
-          ) : (
-            <span className="text-[11.5px] text-muted">No tracked hours yet, so there&rsquo;s nothing to add.</span>
-          )}
-          {windows.peak.length ? (
-            <a href={`/plan/${sessionId}/peak-plan.ics`} className="inline-flex min-h-11 items-center px-2 text-[12.5px] font-extrabold text-navy underline">
-              Just my peak block
-            </a>
-          ) : (
-            <span className="text-[11.5px] text-muted">No peak window yet — the file still carries the rest of your schedule.</span>
-          )}
-        </div>
       </div>
 
       <article className="animate-rise overflow-hidden rounded-[28px] bg-white shadow-[0_40px_90px_-40px_rgba(19,36,73,0.55)] print:animate-none print:rounded-none print:shadow-none">
@@ -159,6 +138,39 @@ export default async function PeakPlanPage({ params }: PageProps<"/plan/[session
                 ))}
               </dl>
             </div>
+          </div>
+        </div>
+
+        <div className="border-t-[1.5px] border-line px-7 py-7 sm:px-[46px] print:hidden">
+          <h2 className="mb-1 font-serif text-[20px] font-semibold text-navy">Take it with you</h2>
+          <p className="mb-4 text-[12.5px] leading-[1.6] text-muted">
+            {hasSchedule
+              ? "Your calendar gets one entry per block, titled with whatever you wrote against those hours."
+              : "Log some hours and your schedule becomes a calendar you can keep."}
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            {hasSchedule ? (
+              <a
+                href={`/plan/${sessionId}/schedule.ics`}
+                className="inline-flex min-h-12 items-center gap-2 rounded-2xl bg-gold px-5 text-[13.5px] font-extrabold text-navy-deep shadow-[0_10px_26px_-12px_rgba(201,169,110,0.9)] transition hover:-translate-y-0.5 hover:bg-gold-bright"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>
+                  <rect x="4" y="5" width="16" height="15" rx="2" />
+                  <path d="M8 3v4M16 3v4M4 10h16" />
+                </svg>
+                Add my schedule to my calendar
+              </a>
+            ) : (
+              <span className="text-[11.5px] text-muted">No tracked hours yet, so there&rsquo;s nothing to add.</span>
+            )}
+            <PrintButton>Print or save as PDF</PrintButton>
+            {windows.peak.length ? (
+              <a href={`/plan/${sessionId}/peak-plan.ics`} className="inline-flex min-h-11 items-center px-2 text-[12.5px] font-extrabold text-navy underline">
+                Just my peak block
+              </a>
+            ) : (
+              <span className="text-[11.5px] text-muted">No peak window yet — the file still carries the rest of your schedule.</span>
+            )}
           </div>
         </div>
 

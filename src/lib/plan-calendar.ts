@@ -102,7 +102,11 @@ export function buildScheduleIcs({
       `DTEND:${icsFloating(end)}`,
       `RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=${OCCURRENCES}`,
       `SUMMARY:${escapeIcsText(block.note || block.task)}`,
-      `DESCRIPTION:${escapeIcsText(`${block.zone} · ${block.task} (${span}). From your Peak Plan.`)}`,
+      // The client's own words first: some calendars show only the body in a
+      // notification, and that's the part they wrote for themselves.
+      `DESCRIPTION:${escapeIcsText(
+        [block.note, `${block.zone} · ${block.task} (${span}). From your Peak Plan.`].filter(Boolean).join("\n\n"),
+      )}`,
       "TRANSP:OPAQUE",
     );
     if (alarm) {

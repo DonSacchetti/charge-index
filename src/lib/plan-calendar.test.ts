@@ -70,6 +70,15 @@ describe("buildScheduleIcs", () => {
     expect(ics).toContain("SUMMARY:Admin");
   });
 
+  it("carries the note into the event body as well as its title", () => {
+    const body = build()!
+      .replace(/\r\n /g, "")
+      .split("\r\n")
+      .find((l) => l.startsWith("DESCRIPTION") && l.includes("board deck"))!;
+    expect(body).toContain("Write the board deck");
+    expect(body).toContain("Fully Charged · Deep work (9 AM – 11 AM)");
+  });
+
   it("repeats on weekdays for four weeks", () => {
     expect(build()).toContain("RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=20");
   });
