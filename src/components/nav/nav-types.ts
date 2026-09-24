@@ -1,6 +1,6 @@
 export type ClientNavData = {
   name: string | null;
-  /** The session in progress, if any. */
+  /** The session being tracked, or the most recent one to keep filling in. */
   logHref: string | null;
   /** The latest completed session's results, if any. */
   resultsHref: string | null;

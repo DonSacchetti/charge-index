@@ -24,13 +24,17 @@ export default async function ClientLayout({ children }: { children: ReactNode }
     ]);
     const inProgress = sessions?.find((s) => s.status === "in_progress");
     const completed = sessions?.find((s) => s.status === "completed");
+    // Log opens the session being tracked; failing that, the most recent one,
+    // so someone who finished early can still fill in the rest of their days.
+    // Only a client with no sessions at all is sent to Home to start one.
+    const logSession = inProgress ?? sessions?.[0];
     const paid = new Set((purchases ?? []).map((p) => p.session_id));
     const isStaff = profile?.role === "coach" || profile?.role === "admin";
     // Staff can open any Peak Plan without buying one (see canViewPeakPlan), so the tab isn't locked for them.
     const planned = sessions?.find((s) => paid.has(s.id)) ?? (isStaff ? completed : undefined);
     nav = {
       name: profile?.full_name ?? null,
-      logHref: inProgress ? `/track/${inProgress.id}` : null,
+      logHref: logSession ? `/track/${logSession.id}` : null,
       resultsHref: completed ? `/track/${completed.id}/complete` : null,
       planHref: planned ? `/plan/${planned.id}` : null,
       isStaff,
