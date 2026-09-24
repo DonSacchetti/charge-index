@@ -186,6 +186,10 @@ try {
   const { data: bobSession } = await bob.db.from("tracking_sessions").select("id").eq("client_id", bob.id).limit(1).single();
   expect(denied(await bob.db.from("plan_notes").insert({ session_id: bobSession.id, slot_hour: "09:00", body: "unpaid" })), "a client without the plan cannot write notes on their own session either");
   expect(!(await alice.db.from("plan_notes").delete().match({ session_id: aliceSession, slot_hour: "09:00" })).error, "the client can clear their own note");
+  // Staff can open any plan, so on their OWN session that's enough to write
+  // notes — Jen tracks her own energy and uses her own plan (2026-09-24).
+  const { data: coachSession } = await coach.db.from("tracking_sessions").select("id").eq("client_id", coach.id).limit(1).single();
+  expect(!(await coach.db.from("plan_notes").insert({ session_id: coachSession.id, slot_hour: "09:00", body: "my own plan" })).error, "a coach can write notes on their own plan, with no purchase");
 
   console.log("\nEntry stats view");
   expect((await coach.db.from("session_entry_stats").select("session_id").eq("session_id", aliceSession)).data?.length === 1, "coach reads a client's entry counts");

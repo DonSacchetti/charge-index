@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { PageBody, PageHero, SectionLabel, Surface } from "@/components/AppShell";
 import { BOOK_CALL_URL } from "@/components/brand/SiteHeader";
+import { formatDayDate } from "@/lib/days";
 import { buildSessionSlots, formatHour, hourOf } from "@/lib/slots";
 import { createClient } from "@/lib/supabase/server";
 
@@ -87,51 +88,65 @@ export default async function SetupPage() {
                     const hours = buildSessionSlots(hourOf(s.wake_time), hourOf(s.sleep_time)).length;
                     const logged = s.daily_entries[0]?.count ?? 0;
                     const pct = hours ? Math.min(100, Math.round((logged / (hours * s.day_count)) * 100)) : 0;
+                    const planHref = hasPlan(s.id, s.status) ? `/plan/${s.id}` : null;
                     return (
-                      <li key={s.id} className="animate-rise rounded-2xl border border-line bg-white p-4" style={{ animationDelay: `${80 + i * 60}ms` }}>
-                        <div className="flex flex-wrap items-baseline justify-between gap-2">
-                          <Link
-                            href={done ? `/track/${s.id}/complete` : `/track/${s.id}`}
-                            className="min-w-0 font-serif text-[19px] font-semibold text-navy wrap-anywhere hover:underline"
-                          >
-                            {s.label ?? "Untitled session"}
-                          </Link>
-                          <span
-                            className={`rounded-full px-[10px] py-[3px] text-[11px] font-extrabold ${
-                              done ? "bg-level-100/12 text-level-100" : "bg-level-75/12 text-level-75"
-                            }`}
-                          >
-                            {done ? "Complete" : "In progress"}
+                      <li key={s.id} className="animate-rise" style={{ animationDelay: `${80 + i * 60}ms` }}>
+                        {/* The whole tile opens the session (Josh, 2026-09-24):
+                            the Peak Plan when they have one, since that's what
+                            they come back for, otherwise results or the log. */}
+                        <Link
+                          href={planHref ?? (done ? `/track/${s.id}/complete` : `/track/${s.id}`)}
+                          className="block rounded-2xl border border-line bg-white p-4 transition hover:-translate-y-0.5 hover:border-navy/25 hover:shadow-[0_18px_40px_-26px_rgba(19,36,73,0.6)]"
+                        >
+                          <span className="flex flex-wrap items-baseline justify-between gap-2">
+                            <span className="min-w-0 font-serif text-[19px] font-semibold text-navy wrap-anywhere">
+                              {s.label ?? "Untitled session"}
+                            </span>
+                            <span
+                              className={`rounded-full px-[10px] py-[3px] text-[11px] font-extrabold ${
+                                done ? "bg-level-100/12 text-level-100" : "bg-level-75/12 text-level-75"
+                              }`}
+                            >
+                              {done ? "Complete" : "In progress"}
+                            </span>
                           </span>
-                        </div>
-                        <div className="mt-1 text-[12px] text-muted">
-                          {s.day_count} days · {formatHour(hourOf(s.wake_time))} – {formatHour(hourOf(s.sleep_time))} · started {s.start_date}
-                        </div>
-                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-cream">
-                          <div
-                            className="h-full origin-left rounded-full"
-                            style={{
-                              width: `${pct}%`,
-                              background: done ? "var(--color-level-100)" : "linear-gradient(90deg, var(--color-glow-75), var(--color-glow-100))",
-                              animation: `charge-rise 0.9s cubic-bezier(.2,.8,.2,1) ${150 + i * 60}ms both`,
-                            }}
-                          />
-                        </div>
-                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[12px]">
-                          <span className="font-bold text-body">
-                            {logged} of {hours * s.day_count} hours logged
+                          <span className="mt-1 block text-[12px] text-muted">
+                            {s.day_count} days · {formatHour(hourOf(s.wake_time))} – {formatHour(hourOf(s.sleep_time))} · started{" "}
+                            {formatDayDate(s.start_date)}
                           </span>
-                          <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                            {hasPlan(s.id, s.status) ? (
-                              <Link href={`/plan/${s.id}`} className="font-extrabold text-gold-deep hover:underline">
-                                Peak Plan →
-                              </Link>
-                            ) : null}
-                            <Link href={done ? `/track/${s.id}/complete` : `/track/${s.id}`} className="font-extrabold text-level-75 hover:underline">
-                              {done ? "See results →" : "Keep logging →"}
-                            </Link>
+                          <span className="mt-3 block h-2 overflow-hidden rounded-full bg-cream">
+                            <span
+                              className="block h-full origin-left rounded-full"
+                              style={{
+                                width: `${pct}%`,
+                                background: done ? "var(--color-level-100)" : "linear-gradient(90deg, var(--color-glow-75), var(--color-glow-100))",
+                                animation: `charge-rise 0.9s cubic-bezier(.2,.8,.2,1) ${150 + i * 60}ms both`,
+                              }}
+                            />
                           </span>
-                        </div>
+                          <span className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[12px]">
+                            <span className="font-bold text-body">
+                              {logged} of {hours * s.day_count} hours logged
+                            </span>
+                            <span className="font-extrabold text-level-75">
+                              {planHref ? "Open my Peak Plan →" : done ? "See results →" : "Keep logging →"}
+                            </span>
+                          </span>
+                        </Link>
+
+                        {/* Only where there's something still to buy. */}
+                        {done && !planHref ? (
+                          <div className="mt-2 flex flex-wrap items-center gap-3 px-1">
+                            <button
+                              type="button"
+                              disabled
+                              className="inline-flex min-h-10 cursor-not-allowed items-center rounded-xl bg-gold px-4 text-[12.5px] font-extrabold text-navy-deep opacity-60"
+                            >
+                              Unlock my Peak Plan · $49
+                            </button>
+                            <span className="text-[11.5px] font-bold text-muted">Coming soon</span>
+                          </div>
+                        ) : null}
                       </li>
                     );
                   })}

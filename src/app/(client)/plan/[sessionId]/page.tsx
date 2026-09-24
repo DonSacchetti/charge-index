@@ -36,7 +36,10 @@ export default async function PeakPlanPage({ params }: PageProps<"/plan/[session
     .eq("session_id", sessionId);
   const noteByHour = new Map((planNotes ?? []).map((n) => [hourOf(n.slot_hour), n.body]));
   const items = schedule.map((s) => ({ ...s, note: noteByHour.get(s.hour) ?? null }));
-  const canEdit = !viewer.isCoach && session.client_id === viewer.user.id;
+  // Whoever the plan belongs to writes the notes — including Jen on her own
+  // sessions. A coach reading someone else's plan sees them, read-only.
+  // has_peak_plan() enforces the same thing in the database.
+  const canEdit = session.client_id === viewer.user.id;
 
   // Their other plans, so an older one someone paid for stays reachable
   // (Josh, 2026-09-24). Only for the client themselves: a coach navigates
