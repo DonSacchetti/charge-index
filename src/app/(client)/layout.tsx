@@ -19,7 +19,7 @@ export default async function ClientLayout({ children }: { children: ReactNode }
   if (user) {
     const [{ data: profile }, { data: sessions }, { data: purchases }] = await Promise.all([
       supabase.from("profiles").select("full_name, role").eq("id", user.id).single(),
-      supabase.from("tracking_sessions").select("id, status").eq("client_id", user.id).order("created_at", { ascending: false }).limit(50),
+      supabase.from("tracking_sessions").select("id, status").eq("client_id", user.id).order("start_date", { ascending: false }).order("created_at", { ascending: false }).limit(50),
       supabase.from("purchases").select("session_id").eq("client_id", user.id).eq("product", "basic_peak_plan").eq("status", "completed"),
     ]);
     const inProgress = sessions?.find((s) => s.status === "in_progress");

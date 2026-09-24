@@ -15,17 +15,26 @@ export default async function SetupPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/setup");
 
-  const [{ data: profile }, { data: sessions }, { count: grantCount }] = await Promise.all([
+  const [{ data: profile }, { data: sessions }, { count: grantCount }, { data: purchases }] = await Promise.all([
     supabase.from("profiles").select("full_name, role").eq("id", user.id).single(),
     supabase
       .from("tracking_sessions")
       .select("id, label, day_count, status, start_date, wake_time, sleep_time, daily_entries(count)")
       .eq("client_id", user.id)
+      // By the week they cover, not when the row was created — a session
+      // seeded or started later can still be the older measurement.
+      .order("start_date", { ascending: false })
       .order("created_at", { ascending: false }),
     supabase
       .from("session_grants")
       .select("id", { count: "exact", head: true })
       .eq("client_id", user.id),
+    supabase
+      .from("purchases")
+      .select("session_id")
+      .eq("client_id", user.id)
+      .eq("product", "basic_peak_plan")
+      .eq("status", "completed"),
   ]);
 
   const first = profile?.full_name?.trim().split(/\s+/)[0];
@@ -36,6 +45,11 @@ export default async function SetupPage() {
   const isStaff = profile?.role === "coach" || profile?.role === "admin";
   const canStart = isStaff || (sessions?.length ?? 0) < 1 + (grantCount ?? 0);
   const latest = sessions?.[0];
+  // A plan belongs to one session, so its link lives on that session's card —
+  // otherwise an older plan someone paid for is reachable only by URL (Josh,
+  // 2026-09-24). Staff can open any completed session's plan.
+  const paid = new Set((purchases ?? []).map((p) => p.session_id));
+  const hasPlan = (id: string, status: string) => paid.has(id) || (isStaff && status === "completed");
 
   return (
     <>
@@ -107,9 +121,16 @@ export default async function SetupPage() {
                           <span className="font-bold text-body">
                             {logged} of {hours * s.day_count} hours logged
                           </span>
-                          <Link href={done ? `/track/${s.id}/complete` : `/track/${s.id}`} className="font-extrabold text-level-75 hover:underline">
-                            {done ? "See results →" : "Keep logging →"}
-                          </Link>
+                          <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                            {hasPlan(s.id, s.status) ? (
+                              <Link href={`/plan/${s.id}`} className="font-extrabold text-gold-deep hover:underline">
+                                Peak Plan →
+                              </Link>
+                            ) : null}
+                            <Link href={done ? `/track/${s.id}/complete` : `/track/${s.id}`} className="font-extrabold text-level-75 hover:underline">
+                              {done ? "See results →" : "Keep logging →"}
+                            </Link>
+                          </span>
                         </div>
                       </li>
                     );
