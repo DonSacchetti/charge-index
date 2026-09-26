@@ -106,6 +106,8 @@ To serve the app from `app.soenenstrategies.com`:
 1. Sign up as a test client, set up a session, and log a few hours.
 2. As coach, open that client from `/coach` and look at their session.
 3. **(developer)** Run both live checks — they create and remove their own test accounts:
+
+   While a check is running, five or six accounts named **"ZZ TEST — access check"** appear in your client list and then disappear, usually within a minute. They're created by the check itself, in the real database, because that's the only way to prove the access rules hold for real sign-ins. If you ever see them outside a run, tell your developer: it means a run was interrupted before it cleaned up.
    ```bash
    node --env-file=.env.local scripts/verify-rls.mjs
    node --env-file=.env.local scripts/verify-access.mjs https://charge-index.vercel.app

@@ -39,7 +39,7 @@ const expect = (ok, m) => (ok ? pass(m) : fail(m));
 async function makeUser(tag, role = "client") {
   const email = `access-check-${tag}-${stamp}@example.com`;
   const password = `AccessCheck!${stamp}`;
-  const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: tag } });
+  const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: `ZZ TEST — access check (${tag})` } });
   if (error) throw new Error(`createUser ${tag}: ${error.message}`);
   created.push(data.user.id);
   if (role !== "client") await admin.from("profiles").update({ role }).eq("id", data.user.id);
@@ -91,6 +91,11 @@ async function get(path, user) {
     body: bytes.toString("utf8"),
   };
 }
+
+console.log(
+  "\nNOTE: this creates throwaway accounts in the LIVE project. They show up in\n" +
+    "the coach roster as 'ZZ TEST' for the length of the run, then are deleted.\n",
+);
 
 try {
   console.log(`Target: ${BASE}`);

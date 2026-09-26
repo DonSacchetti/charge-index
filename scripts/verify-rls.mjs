@@ -42,7 +42,9 @@ async function makeUser(tag, role = "client") {
     email,
     password,
     email_confirm: true,
-    user_metadata: { full_name: tag },
+    // Obvious on sight: these live for under a minute, but a coach refreshing
+    // the roster mid-run shouldn't wonder who they are (Josh, 2026-09-26).
+    user_metadata: { full_name: `ZZ TEST — access check (${tag})` },
   });
   if (error) throw new Error(`createUser ${tag}: ${error.message}`);
   created.push(data.user.id);
@@ -76,6 +78,11 @@ const count = async (db, table, column, value) => {
   return data?.length ?? 0;
 };
 
+console.log(
+  "\nNOTE: this creates throwaway accounts in the LIVE project. They show up in\n" +
+    "the coach roster as 'ZZ TEST' for the length of the run, then are deleted.\n",
+);
+
 try {
   const alice = await makeUser("alice");
   const bob = await makeUser("bob");
@@ -84,11 +91,11 @@ try {
 
   console.log("\nProfiles — no self-promotion");
   const { data: aliceProfile } = await admin.from("profiles").select("role, full_name").eq("id", alice.id).single();
-  expect(aliceProfile?.role === "client" && aliceProfile?.full_name === "alice", "signup trigger creates a client profile with the name");
+  expect(aliceProfile?.role === "client" && aliceProfile?.full_name?.includes("alice"), "signup trigger creates a client profile with the name");
   expect(denied(await alice.db.from("profiles").update({ role: "coach" }).eq("id", alice.id)), "client cannot set own role");
   expect(denied(await alice.db.from("profiles").update({ role: "admin", full_name: "x" }).eq("id", alice.id)), "client cannot smuggle role alongside a name change");
   expect(denied(await alice.db.from("profiles").update({ stripe_customer_id: "cus_forged" }).eq("id", alice.id)), "client cannot set own stripe_customer_id");
-  expect(!(await alice.db.from("profiles").update({ full_name: "alice" }).eq("id", alice.id)).error, "client can still change own name");
+  expect(!(await alice.db.from("profiles").update({ full_name: "ZZ TEST — access check (alice)" }).eq("id", alice.id)).error, "client can still change own name");
   const { data: withEmail } = await admin.from("profiles").select("email").eq("id", alice.id).single();
   expect(withEmail?.email === alice.email, "signup trigger copies the account email onto the profile");
   expect(denied(await alice.db.from("profiles").update({ email: "spoofed@example.com" }).eq("id", alice.id)), "client cannot overwrite the email on their profile");
