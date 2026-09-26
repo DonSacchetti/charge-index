@@ -22,6 +22,24 @@ if (!URL || !ANON || !SERVICE) {
   process.exit(2);
 }
 
+// ── Never touch the live project ───────────────────────────────────────────
+// These checks create throwaway users, and on 2026-09-26 Josh saw a run's
+// accounts in Jen's real client list. They now refuse to run anywhere but a
+// local Supabase stack (scripts/verify-local.sh). ALLOW_LIVE=1 overrides, for
+// the rare case of proving something against production on purpose — expect
+// "ZZ TEST" rows to appear in the roster for the length of the run.
+const isLocal = /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:|\/|$)/.test(URL ?? "");
+if (!isLocal && process.env.ALLOW_LIVE !== "1") {
+  console.error(
+    `Refusing to run against ${URL}.\n` +
+      "These checks create and delete real accounts, which show up in the live\n" +
+      "client roster while they run. Use scripts/verify-local.sh, which starts a\n" +
+      "local Supabase stack and points both checks at it.\n" +
+      "To override deliberately: ALLOW_LIVE=1 node scripts/<script>.mjs",
+  );
+  process.exit(2);
+}
+
 const admin = createClient(URL, SERVICE, { auth: { persistSession: false } });
 const stamp = Date.now();
 const created = [];
@@ -77,11 +95,6 @@ const count = async (db, table, column, value) => {
   const { data } = await db.from(table).select(column).eq(column, value);
   return data?.length ?? 0;
 };
-
-console.log(
-  "\nNOTE: this creates throwaway accounts in the LIVE project. They show up in\n" +
-    "the coach roster as 'ZZ TEST' for the length of the run, then are deleted.\n",
-);
 
 try {
   const alice = await makeUser("alice");

@@ -41,11 +41,10 @@ Credentials are never committed — this repository is public.
 | `npm run build` | Production build |
 | `npm test` | Unit tests (Vitest) |
 | `npm run lint` | ESLint |
-| `node --env-file=.env.local scripts/verify-rls.mjs` | Live check of the database access rules |
-| `node --env-file=.env.local scripts/verify-access.mjs [url]` | Live check of who can open which page and download |
+| `./scripts/verify-local.sh` | Both access checks, against a local Supabase stack (needs Docker) |
 | `node --env-file=<control-plane env> scripts/apply-migration.mjs <file>` | Apply a migration to the live database |
 
-The two `verify-*` scripts create throwaway users in the real project and delete them afterwards. Run them after any change to access rules, routes or migrations.
+The two `verify-*` scripts create throwaway users and sign in as them — the only way to prove the access rules end to end. They refuse to run against the hosted project, because those accounts show up in the real client roster while a run is in progress; `verify-local.sh` starts a local Supabase stack with the same migrations and points both at it. Run it after any change to access rules, routes or migrations.
 
 ## Where things are
 
