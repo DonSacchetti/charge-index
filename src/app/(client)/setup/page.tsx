@@ -90,15 +90,21 @@ export default async function SetupPage() {
                     const pct = hours ? Math.min(100, Math.round((logged / (hours * s.day_count)) * 100)) : 0;
                     const planHref = hasPlan(s.id, s.status) ? `/plan/${s.id}` : null;
                     return (
-                      <li key={s.id} className="animate-rise" style={{ animationDelay: `${80 + i * 60}ms` }}>
-                        {/* The whole tile opens the session (Josh, 2026-09-24):
-                            the Peak Plan when they have one, since that's what
-                            they come back for, otherwise results or the log. */}
+                      <li
+                        key={s.id}
+                        className="animate-rise group relative rounded-2xl border border-line bg-white p-4 transition hover:-translate-y-0.5 hover:border-navy/25 hover:shadow-[0_18px_40px_-26px_rgba(19,36,73,0.6)]"
+                        style={{ animationDelay: `${80 + i * 60}ms` }}
+                      >
+                        {/* The tile opens the log, so a session can always be
+                            carried on with (Josh, 2026-09-26). Results and the
+                            plan are their own links, sitting above this one. */}
                         <Link
-                          href={planHref ?? (done ? `/track/${s.id}/complete` : `/track/${s.id}`)}
-                          className="block rounded-2xl border border-line bg-white p-4 transition hover:-translate-y-0.5 hover:border-navy/25 hover:shadow-[0_18px_40px_-26px_rgba(19,36,73,0.6)]"
-                        >
-                          <span className="flex flex-wrap items-baseline justify-between gap-2">
+                          href={`/track/${s.id}`}
+                          aria-label={`Keep logging ${s.label ?? "this session"}`}
+                          className="absolute inset-0 rounded-2xl"
+                        />
+                        <div className="pointer-events-none">
+                          <div className="flex flex-wrap items-baseline justify-between gap-2">
                             <span className="min-w-0 font-serif text-[19px] font-semibold text-navy wrap-anywhere">
                               {s.label ?? "Untitled session"}
                             </span>
@@ -109,44 +115,53 @@ export default async function SetupPage() {
                             >
                               {done ? "Complete" : "In progress"}
                             </span>
-                          </span>
-                          <span className="mt-1 block text-[12px] text-muted">
+                          </div>
+                          <div className="mt-1 text-[12px] text-muted">
                             {s.day_count} days · {formatHour(hourOf(s.wake_time))} – {formatHour(hourOf(s.sleep_time))} · started{" "}
                             {formatDayDate(s.start_date)}
-                          </span>
-                          <span className="mt-3 block h-2 overflow-hidden rounded-full bg-cream">
-                            <span
-                              className="block h-full origin-left rounded-full"
+                          </div>
+                          <div className="mt-3 h-2 overflow-hidden rounded-full bg-cream">
+                            <div
+                              className="h-full origin-left rounded-full"
                               style={{
                                 width: `${pct}%`,
                                 background: done ? "var(--color-level-100)" : "linear-gradient(90deg, var(--color-glow-75), var(--color-glow-100))",
                                 animation: `charge-rise 0.9s cubic-bezier(.2,.8,.2,1) ${150 + i * 60}ms both`,
                               }}
                             />
-                          </span>
-                          <span className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[12px]">
-                            <span className="font-bold text-body">
-                              {logged} of {hours * s.day_count} hours logged
-                            </span>
-                            <span className="font-extrabold text-level-75">
-                              {planHref ? "Open my Peak Plan →" : done ? "See results →" : "Keep logging →"}
-                            </span>
-                          </span>
-                        </Link>
-
-                        {/* Only where there's something still to buy. */}
-                        {done && !planHref ? (
-                          <div className="mt-2 flex flex-wrap items-center gap-3 px-1">
-                            <button
-                              type="button"
-                              disabled
-                              className="inline-flex min-h-10 cursor-not-allowed items-center rounded-xl bg-gold px-4 text-[12.5px] font-extrabold text-navy-deep opacity-60"
-                            >
-                              Unlock my Peak Plan · $49
-                            </button>
-                            <span className="text-[11.5px] font-bold text-muted">Coming soon</span>
                           </div>
-                        ) : null}
+                          <div className="mt-2 text-[12px] font-bold text-body">
+                            {logged} of {hours * s.day_count} hours logged
+                          </div>
+                        </div>
+
+                        <div className="relative mt-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px]">
+                          <Link href={`/track/${s.id}`} className="font-extrabold text-level-75 hover:underline">
+                            Keep logging →
+                          </Link>
+                          {done ? (
+                            <Link href={`/track/${s.id}/complete`} className="font-extrabold text-navy hover:underline">
+                              See results →
+                            </Link>
+                          ) : null}
+                          {planHref ? (
+                            <Link href={planHref} className="font-extrabold text-gold-deep hover:underline">
+                              Peak Plan →
+                            </Link>
+                          ) : null}
+                          {done && !planHref ? (
+                            <>
+                              <button
+                                type="button"
+                                disabled
+                                className="inline-flex min-h-10 cursor-not-allowed items-center rounded-xl bg-gold px-4 text-[12.5px] font-extrabold text-navy-deep opacity-60"
+                              >
+                                Unlock my Peak Plan · $49
+                              </button>
+                              <span className="text-[11.5px] font-bold text-muted">Coming soon</span>
+                            </>
+                          ) : null}
+                        </div>
                       </li>
                     );
                   })}
