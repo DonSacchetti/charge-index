@@ -10,7 +10,6 @@ import { IdealDayCard } from "@/components/coach/IdealDayCard";
 import { ZoneCards } from "@/components/coach/ZoneCards";
 import { consistency, idealDay, idealZoneHours } from "@/lib/coach-analysis";
 import { alignToAxis, compareAxis } from "@/lib/compare";
-import { PLAN_WINDOWS } from "@/lib/peak-plan";
 import { loadSessionAnalysis } from "@/lib/session-data";
 import { formatHour } from "@/lib/slots";
 import { requireCoach } from "@/lib/viewer";
@@ -99,25 +98,10 @@ export default async function CoachSessionPage({
         </div>
       </div>
 
-      <div className="mb-5 grid gap-4 md:grid-cols-3">
-        {PLAN_WINDOWS.map((w) => (
-          <div
-            key={w.band}
-            className="rounded-[14px] border-[1.5px] p-5"
-            style={{ borderColor: w.color, background: w.tint }}
-          >
-            <div
-              className="mb-2 text-[9.5px] font-extrabold tracking-[0.13em] uppercase"
-              style={{ color: w.color }}
-            >
-              {w.label}
-            </div>
-            <div className="font-serif text-[21px] leading-[1.25] font-semibold text-ink">
-              {formatRanges(windows[w.band])}
-            </div>
-            <p className="mt-2 text-[12px] leading-[1.6] text-body">{w.desc}</p>
-          </div>
-        ))}
+      {/* The same four zones top and bottom (Josh, 2026-09-29): Jen wanted one
+          set of boxes, not three above and four below. */}
+      <div className="mb-5">
+        <ZoneCards hours={idealZoneHours(map)} />
       </div>
 
       <Card className="mb-5" accent="spectrum">

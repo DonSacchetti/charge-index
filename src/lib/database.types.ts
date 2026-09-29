@@ -86,13 +86,6 @@ export type Database = {
             foreignKeyName: "coach_notes_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
-            referencedRelation: "session_entry_stats"
-            referencedColumns: ["session_id"]
-          },
-          {
-            foreignKeyName: "coach_notes_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
             referencedRelation: "tracking_sessions"
             referencedColumns: ["id"]
           },
@@ -106,6 +99,7 @@ export type Database = {
           id: string
           session_id: string
           slot_hour: string
+          updated_at: string
         }
         Insert: {
           created_at?: string
@@ -114,6 +108,7 @@ export type Database = {
           id?: string
           session_id: string
           slot_hour: string
+          updated_at?: string
         }
         Update: {
           created_at?: string
@@ -122,15 +117,9 @@ export type Database = {
           id?: string
           session_id?: string
           slot_hour?: string
+          updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "daily_entries_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "session_entry_stats"
-            referencedColumns: ["session_id"]
-          },
           {
             foreignKeyName: "daily_entries_session_id_fkey"
             columns: ["session_id"]
@@ -173,13 +162,6 @@ export type Database = {
             foreignKeyName: "daily_notes_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
-            referencedRelation: "session_entry_stats"
-            referencedColumns: ["session_id"]
-          },
-          {
-            foreignKeyName: "daily_notes_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
             referencedRelation: "tracking_sessions"
             referencedColumns: ["id"]
           },
@@ -208,13 +190,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "plan_notes_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "session_entry_stats"
-            referencedColumns: ["session_id"]
-          },
           {
             foreignKeyName: "plan_notes_session_id_fkey"
             columns: ["session_id"]
@@ -294,13 +269,6 @@ export type Database = {
             foreignKeyName: "purchases_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
-            referencedRelation: "session_entry_stats"
-            referencedColumns: ["session_id"]
-          },
-          {
-            foreignKeyName: "purchases_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
             referencedRelation: "tracking_sessions"
             referencedColumns: ["id"]
           },
@@ -333,13 +301,6 @@ export type Database = {
             foreignKeyName: "reminder_log_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
-            referencedRelation: "session_entry_stats"
-            referencedColumns: ["session_id"]
-          },
-          {
-            foreignKeyName: "reminder_log_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
             referencedRelation: "tracking_sessions"
             referencedColumns: ["id"]
           },
@@ -365,13 +326,6 @@ export type Database = {
           windows?: Json | null
         }
         Relationships: [
-          {
-            foreignKeyName: "session_analysis_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: true
-            referencedRelation: "session_entry_stats"
-            referencedColumns: ["session_id"]
-          },
           {
             foreignKeyName: "session_analysis_session_id_fkey"
             columns: ["session_id"]
@@ -425,6 +379,7 @@ export type Database = {
           client_id: string
           created_at: string
           day_count: number
+          flag_cleared_at: string | null
           id: string
           label: string | null
           reminder_pref: Database["public"]["Enums"]["reminder_pref"]
@@ -438,6 +393,7 @@ export type Database = {
           client_id: string
           created_at?: string
           day_count: number
+          flag_cleared_at?: string | null
           id?: string
           label?: string | null
           reminder_pref?: Database["public"]["Enums"]["reminder_pref"]
@@ -451,6 +407,7 @@ export type Database = {
           client_id?: string
           created_at?: string
           day_count?: number
+          flag_cleared_at?: string | null
           id?: string
           label?: string | null
           reminder_pref?: Database["public"]["Enums"]["reminder_pref"]
@@ -472,31 +429,19 @@ export type Database = {
       }
     }
     Views: {
-      session_entry_stats: {
-        Row: {
-          client_id: string | null
-          hours_logged: number | null
-          session_id: string | null
-          top_hours: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tracking_sessions_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
       can_start_session: { Args: never; Returns: boolean }
+      entry_hour_open: {
+        Args: { p_day: number; p_session: string; p_slot: string }
+        Returns: boolean
+      }
       has_peak_plan: { Args: { p_session: string }; Returns: boolean }
       is_coach: { Args: never; Returns: boolean }
-      session_day_unlocked: {
-        Args: { p_day: number; p_session: string }
-        Returns: boolean
+      set_session_flag_review: {
+        Args: { p_clear: boolean; p_session: string }
+        Returns: undefined
       }
     }
     Enums: {

@@ -235,6 +235,28 @@ export function flatDayLevels(entries: Entry[], hours: number[]): Map<number, Se
   return levels;
 }
 
+/**
+ * True when two consecutive days share a flat run at the same level, and Jen
+ * hasn't already reviewed it (Josh, 2026-09-29). A review is a timestamp, not
+ * a switch: anything the client logs afterwards raises the flag again, which
+ * is the case worth a second look.
+ */
+export function isFlagged({
+  entries,
+  hours,
+  clearedAt,
+  lastEntryAt,
+}: {
+  entries: Entry[];
+  hours: number[];
+  clearedAt?: string | null;
+  lastEntryAt?: string | null;
+}): boolean {
+  if (!hasRepeatedFlatRun(entries, hours)) return false;
+  if (!clearedAt) return true;
+  return Boolean(lastEntryAt && lastEntryAt > clearedAt);
+}
+
 /** True when two consecutive days share a flat run at the same level. */
 export function hasRepeatedFlatRun(entries: Entry[], hours: number[]): boolean {
   const levels = flatDayLevels(entries, hours);

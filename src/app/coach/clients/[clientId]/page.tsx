@@ -8,7 +8,7 @@ import { formatHour } from "@/lib/slots";
 import { requireCoach } from "@/lib/viewer";
 import { MIN_HOURS_FOR_RESULT, formatRanges } from "@/lib/weekly-map";
 
-import { deleteNote, grantSession, revokeSession } from "./actions";
+import { deleteNote, grantSession, reviewFlag, revokeSession } from "./actions";
 
 /** One client: every session with its headline numbers, Jen's notes, and exports. */
 export default async function CoachClientPage({ params }: PageProps<"/coach/clients/[clientId]">) {
@@ -37,6 +37,9 @@ export default async function CoachClientPage({ params }: PageProps<"/coach/clie
 
   // How the client fills the grid, across everything they've logged.
   const flaggedSessions = bundles.filter((b) => b.flatRun);
+  // Reviewed ones stay visible as "reviewed" rather than vanishing, so Jen can
+  // see she's already dealt with them — and undo it.
+  const reviewedSessions = bundles.filter((b) => !b.flatRun && b.session.flag_cleared_at);
 
   // One session each, plus one per grant Jen has given (2026-09-24).
   const grantCount = grants?.length ?? 0;
@@ -88,19 +91,51 @@ export default async function CoachClientPage({ params }: PageProps<"/coach/clie
       </div>
 
       {flaggedSessions.length ? (
-        <Card className="mb-5" accent={100}>
+        <Card className="mb-5" accent={10}>
           <div className="flex flex-wrap items-start gap-4">
-            <span className="flex h-11 w-11 flex-none items-center justify-center rounded-2xl bg-level-100/12 text-[20px]" aria-hidden>
-              ⚡
+            <span className="flex h-11 w-11 flex-none items-center justify-center rounded-2xl bg-level-10/12 text-[20px] text-level-10" aria-hidden>
+              ⚑
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <h2 className="font-serif text-[20px] font-semibold text-navy">Same level, hours at a time</h2>
               <p className="mt-1 text-[13.5px] leading-[1.6] text-body">
-                In {flaggedSessions.length === 1 ? "one session" : `${flaggedSessions.length} sessions`} (
-                {flaggedSessions.map((b) => b.session.label || "untitled").join(", ")}) this client logged five or more
-                straight hours on a single level, two days running. Worth a call: it usually means the grid is being
-                filled in rather than read, and the plan built from it would inherit that.
+                Five or more straight hours on a single level, two days running, in{" "}
+                {flaggedSessions.map((b) => b.session.label || "an untitled session").join(", ")}. Worth a call: it
+                usually means the grid is being filled in rather than read, and a plan built from it would inherit that.
               </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {flaggedSessions.map((b) => (
+                  <form key={b.session.id} action={reviewFlag.bind(null, clientId, b.session.id, true)}>
+                    <button
+                      type="submit"
+                      className="inline-flex min-h-10 items-center rounded-xl border-[1.5px] border-level-10/40 bg-white px-4 text-[12.5px] font-extrabold text-level-10 transition hover:bg-level-10/10"
+                    >
+                      Mark {b.session.label || "this session"} reviewed
+                    </button>
+                  </form>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Card>
+      ) : null}
+
+      {reviewedSessions.length ? (
+        <Card className="mb-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="m-0 text-[12.5px] text-body">
+              <strong className="text-navy">Reviewed:</strong>{" "}
+              {reviewedSessions.map((b) => b.session.label || "an untitled session").join(", ")}. The flag returns by
+              itself if they log the same way again.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {reviewedSessions.map((b) => (
+                <form key={b.session.id} action={reviewFlag.bind(null, clientId, b.session.id, false)}>
+                  <button type="submit" className="inline-flex min-h-9 items-center px-2 text-[12px] font-bold text-muted underline hover:text-navy">
+                    Show the flag again
+                  </button>
+                </form>
+              ))}
             </div>
           </div>
         </Card>
@@ -170,6 +205,14 @@ export default async function CoachClientPage({ params }: PageProps<"/coach/clie
                       <Link href={`/coach/sessions/${b.session.id}`} className="font-extrabold text-navy underline">
                         {b.session.label || "Untitled session"}
                       </Link>
+                      {b.flatRun ? (
+                        <span
+                          className="ml-2 rounded-full bg-level-10/12 px-[7px] py-[2px] text-[10px] font-extrabold tracking-[0.05em] text-level-10 uppercase"
+                          title="Five or more straight hours on one level, two days running"
+                        >
+                          ⚑ same level
+                        </span>
+                      ) : null}
                       <div className="text-[11px] text-muted">
                         {b.session.start_date} · {b.session.status === "completed" ? "Complete" : "In progress"}
                       </div>

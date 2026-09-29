@@ -9,7 +9,7 @@ import {
   MIN_HOURS_FOR_RESULT,
   computeWeeklyMap,
   findWindows,
-  hasRepeatedFlatRun,
+  isFlagged,
   topHours,
 } from "@/lib/weekly-map";
 
@@ -33,13 +33,13 @@ export async function loadSessionAnalysis(
     supabase
       .from("tracking_sessions")
       .select(
-        "id, client_id, label, wake_time, sleep_time, day_count, start_date, status, created_at, profiles(full_name)",
+        "id, client_id, label, wake_time, sleep_time, day_count, start_date, status, created_at, flag_cleared_at, profiles(full_name)",
       )
       .eq("id", sessionId)
       .maybeSingle(),
     supabase
       .from("daily_entries")
-      .select("day_number, slot_hour, energy_pct")
+      .select("day_number, slot_hour, energy_pct, updated_at")
       .eq("session_id", sessionId),
     supabase
       .from("daily_notes")
@@ -56,8 +56,8 @@ export async function loadSessionAnalysis(
   };
 }
 
-type SessionShape = { wake_time: string; sleep_time: string };
-type EntryRow = { day_number: number; slot_hour: string; energy_pct: number };
+type SessionShape = { wake_time: string; sleep_time: string; flag_cleared_at?: string | null };
+type EntryRow = { day_number: number; slot_hour: string; energy_pct: number; updated_at?: string };
 type NoteRow = {
   day_number: number;
   feel_note: string | null;
@@ -104,6 +104,11 @@ export function analyseSession(session: SessionShape, rows: EntryRow[], notes: N
     topPeak: topHours(map),
     /** Below this, the results screen withholds the peak hours entirely. */
     hasEnoughData: entries.length >= MIN_HOURS_FOR_RESULT,
-    flatRun: hasRepeatedFlatRun(entries, hours),
+    flatRun: isFlagged({
+      entries,
+      hours,
+      clearedAt: session.flag_cleared_at,
+      lastEntryAt: rows.reduce<string | null>((latest, r) => (r.updated_at && (!latest || r.updated_at > latest) ? r.updated_at : latest), null),
+    }),
   };
 }

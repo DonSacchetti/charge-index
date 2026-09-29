@@ -37,13 +37,20 @@ export const PLAN_WINDOWS = [
   },
 ] as const;
 
-/** The plan's schedule wording differs from the coach's ideal day, as in the prototype. */
-export const PLAN_SCHEDULE: Record<IdealZone, { task: string; zone: string; color: string; tint: string }> = {
-  peak: { task: "Strategic thinking · deep work", zone: "Fully Charged", color: "#2f7d52", tint: "#f4faf7" },
-  collab: { task: "Meetings · stakeholder engagement", zone: "Dynamic", color: "#3a6ec4", tint: "#f5f8fd" },
-  low: { task: "Email · files · look ahead at schedule", zone: "Steady / Low", color: "#d4943a", tint: "#fdfaf4" },
-  depleted: { task: "Rest · relax · protect sleep", zone: "Recharge Needed", color: "#c04545", tint: "#fdf6f6" },
-  unknown: { task: "Untracked hour", zone: "—", color: "#8a8aa0", tint: "#f7f6f3" },
+/**
+ * The plan's schedule wording differs from the coach's ideal day, as in the
+ * prototype. `short` is what a phone shows: the rows are one line each now
+ * (Josh, 2026-09-29), and the full wording would just truncate mid-word.
+ */
+export const PLAN_SCHEDULE: Record<
+  IdealZone,
+  { task: string; short: string; zone: string; color: string; tint: string }
+> = {
+  peak: { task: "Strategic thinking · deep work", short: "Deep work", zone: "Fully Charged", color: "#2f7d52", tint: "#f4faf7" },
+  collab: { task: "Meetings · stakeholder engagement", short: "Meetings", zone: "Dynamic", color: "#3a6ec4", tint: "#f5f8fd" },
+  low: { task: "Email · files · look ahead at schedule", short: "Email · admin", zone: "Steady / Low", color: "#d4943a", tint: "#fdfaf4" },
+  depleted: { task: "Rest · relax · protect sleep", short: "Rest", zone: "Recharge Needed", color: "#c04545", tint: "#fdf6f6" },
+  unknown: { task: "Untracked hour", short: "Untracked", zone: "—", color: "#8a8aa0", tint: "#f7f6f3" },
 };
 
 export function planSchedule(map: HourAverage[]) {

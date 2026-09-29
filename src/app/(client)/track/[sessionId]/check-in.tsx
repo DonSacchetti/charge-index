@@ -108,6 +108,8 @@ export function CheckIn({
   const nextLocked = day + 1 < dayCount && !started(day + 2);
   // Jen's 24-hour window, hour by hour (2026-09-29). Recomputed on a timer so
   // an hour closes while the screen is open rather than on the next reload.
+  /** A day with nothing left to log: every hour past its 24 hours. */
+  const dayClosed = (n: number) => started(n) && hours.every((h) => statusOf(h, n) !== "open");
   const statusOf = (hour: number, n = dayNumber) =>
     hourStatus({ startDate, dayNumber: n, hour, wakeHour, timezone }, clock);
   const hourOpen = (hour: number, n = dayNumber) => statusOf(hour, n) === "open";
@@ -237,6 +239,10 @@ export function CheckIn({
     const done = isComplete(d, slotCount);
     const active = i === day;
     const shut = !started(i + 1);
+    // A lock means "you can't log here": either the day hasn't arrived, or
+    // all its hours have closed (Josh, 2026-09-29).
+    const done24 = !shut && dayClosed(i + 1);
+    const locked = shut || done24;
     if (layout === "chip") {
       return (
         <button
@@ -245,7 +251,7 @@ export function CheckIn({
           onClick={() => goToDay(i)}
           disabled={shut}
           aria-current={active ? "step" : undefined}
-          title={shut ? `Opens ${dayDates[i]}` : undefined}
+          title={shut ? `Opens ${dayDates[i]}` : done24 ? "Closed — hours stay open for 24 hours" : undefined}
           className={`flex min-h-11 flex-none flex-col items-start justify-center gap-0 rounded-2xl border-[1.5px] px-4 py-1.5 text-left transition ${
             shut
               ? "cursor-not-allowed border-line bg-cream text-muted"
@@ -258,7 +264,7 @@ export function CheckIn({
           style={!shut && active ? { background: done ? "var(--color-level-100)" : "var(--color-navy)" } : undefined}
         >
           <span className="flex items-center gap-1.5 text-[13px] font-extrabold whitespace-nowrap">
-            {shut ? <span aria-hidden>🔒</span> : done ? <span aria-hidden>✓</span> : null}
+            {locked ? <span aria-hidden>🔒</span> : done ? <span aria-hidden>✓</span> : null}
             Day {i + 1}
           </span>
           <span className={`text-[10.5px] font-bold whitespace-nowrap ${active && !shut ? "text-white/70" : "text-muted"}`}>
@@ -280,10 +286,10 @@ export function CheckIn({
       >
         <span className="flex items-center justify-between text-[13px] font-extrabold">
           <span className="flex items-center gap-1.5">
-            {shut ? <span aria-hidden>🔒</span> : null}Day {i + 1}
+            {locked ? <span aria-hidden>🔒</span> : null}Day {i + 1}
           </span>
           <span className={`text-[11px] font-bold ${active && !shut ? "text-white/70" : done ? "text-level-100" : "text-muted"}`}>
-            {shut ? "locked" : done ? "✓ full" : `${n}/${slotCount}`}
+            {shut ? "locked" : done24 ? "closed" : done ? "✓ full" : `${n}/${slotCount}`}
           </span>
         </span>
         <span className={`mt-0.5 block text-[11px] font-bold ${active && !shut ? "text-white/60" : "text-muted"}`}>

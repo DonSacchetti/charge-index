@@ -41,7 +41,7 @@ export default async function CoachRoster({ searchParams }: PageProps<"/coach">)
             { label: all.length === 1 ? "client" : "clients", value: all.length, level: 75 },
             { label: data.sessions.length === 1 ? "session" : "sessions", value: data.sessions.length, level: 100 },
             { label: "tracking now", value: active, level: 25 },
-            { label: flagged === 1 ? "to review" : "to review", value: flagged, level: 10 },
+            { label: "to review", value: flagged, level: 10 },
           ].map((s, i) => (
             <div key={s.label} className="animate-rise rounded-2xl border border-white/10 bg-white/[0.07] px-4 py-4 backdrop-blur" style={{ animationDelay: `${120 + i * 70}ms` }}>
               <dd className="m-0 font-serif text-[34px] leading-none font-semibold" style={{ color: `var(--color-glow-${s.level})` }}>
@@ -95,7 +95,7 @@ export default async function CoachRoster({ searchParams }: PageProps<"/coach">)
                       </Link>
                       {c.flatRun ? (
                         <span
-                          className="ml-2 rounded-full bg-level-25/15 px-[7px] py-[2px] text-[10px] font-extrabold tracking-[0.05em] text-level-25 uppercase"
+                          className="ml-2 rounded-full bg-level-10/12 px-[7px] py-[2px] text-[10px] font-extrabold tracking-[0.05em] text-level-10 uppercase"
                           title="Five or more straight hours on one level, two days running — worth a call about how they're filling it in"
                         >
                           ⚑ same level

@@ -8,7 +8,7 @@ import { fetchAll } from "@/lib/fetch-all";
 import type { SummaryRow } from "@/lib/roster";
 import { analyseSession } from "@/lib/session-data";
 import { buildSessionSlots, hourOf } from "@/lib/slots";
-import { hasRepeatedFlatRun } from "@/lib/weekly-map";
+import { isFlagged } from "@/lib/weekly-map";
 
 type Db = SupabaseClient<Database>;
 
@@ -21,13 +21,13 @@ export async function loadRosterData(supabase: Db) {
     fetchAll((from, to) =>
       supabase
         .from("tracking_sessions")
-        .select("id, client_id, label, status, start_date, created_at, day_count, wake_time, sleep_time")
+        .select("id, client_id, label, status, start_date, created_at, day_count, wake_time, sleep_time, flag_cleared_at")
         .order("id")
         .range(from, to),
     ),
     fetchAll((from, to) => supabase.from("coach_notes").select("client_id").order("id").range(from, to)),
     fetchAll((from, to) =>
-      supabase.from("daily_entries").select("session_id, day_number, slot_hour, energy_pct").order("id").range(from, to),
+      supabase.from("daily_entries").select("session_id, day_number, slot_hour, energy_pct, updated_at").order("id").range(from, to),
     ),
   ]);
   return {
@@ -42,10 +42,12 @@ export async function loadRosterData(supabase: Db) {
       return {
         client_id: session.client_id,
         hours_logged: own.length,
-        flat_run: hasRepeatedFlatRun(
-          own.map((e) => ({ dayNumber: e.day_number, hour: hourOf(e.slot_hour), pct: e.energy_pct })),
+        flat_run: isFlagged({
+          entries: own.map((e) => ({ dayNumber: e.day_number, hour: hourOf(e.slot_hour), pct: e.energy_pct })),
           hours,
-        ),
+          clearedAt: session.flag_cleared_at,
+          lastEntryAt: own.reduce<string | null>((latest, e) => (!latest || e.updated_at > latest ? e.updated_at : latest), null),
+        }),
       };
     }),
   };
@@ -60,7 +62,7 @@ export async function loadSessionBundles(supabase: Db, clientId?: string) {
   const sessions = await fetchAll((from, to) => {
     let q = supabase
       .from("tracking_sessions")
-      .select("id, client_id, label, status, start_date, created_at, day_count, wake_time, sleep_time, profiles(full_name, email)");
+      .select("id, client_id, label, status, start_date, created_at, day_count, wake_time, sleep_time, flag_cleared_at, profiles(full_name, email)");
     if (clientId) q = q.eq("client_id", clientId);
     return q.order("start_date", { ascending: false }).order("id").range(from, to);
   });
@@ -71,7 +73,7 @@ export async function loadSessionBundles(supabase: Db, clientId?: string) {
   const ids = sessions.map((s) => s.id);
   const [entries, notes] = await Promise.all([
     fetchAll((from, to) => {
-      let q = supabase.from("daily_entries").select("session_id, day_number, slot_hour, energy_pct");
+      let q = supabase.from("daily_entries").select("session_id, day_number, slot_hour, energy_pct, updated_at");
       if (clientId) q = q.in("session_id", ids);
       return q.order("id").range(from, to);
     }),

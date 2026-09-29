@@ -9,6 +9,7 @@ import { formatHourLong, toTimeValue } from "@/lib/slots";
 export type ScheduleItem = {
   hour: number;
   task: string;
+  short: string;
   zone: string;
   color: string;
   tint: string;
@@ -119,76 +120,82 @@ export function ScheduleEditor({ sessionId, items, canEdit }: Props) {
         </div>
       ) : null}
 
-      {/* Two columns once there's room, so a 16-hour day doesn't become a
-          page of scrolling (Jen, 2026-09-29). Print keeps one column. */}
-      <ol className="m-0 mb-7 grid list-none grid-cols-1 gap-x-4 gap-y-[4px] p-0 lg:grid-cols-2 print:grid-cols-2">
+      {/* One line per hour, stacked (Josh, 2026-09-29): hour, what it suits,
+          the client's own words and the level all sit on the same row, so the
+          whole day reads at a glance instead of scrolling. The note editor is
+          the only thing that grows the row, and only while it's open. */}
+      <ol className="m-0 mb-7 flex list-none flex-col gap-[3px] p-0">
         {items.map((s) => {
           const note = notes[s.hour] ?? "";
           const open = openHour === s.hour;
           return (
             <li
               key={s.hour}
-              className="rounded-r-lg border-l-4 px-3 py-[6px] print:break-inside-avoid"
+              className="rounded-r-md border-l-4 px-2.5 py-[3px] print:break-inside-avoid"
               style={{ borderColor: s.color, background: s.tint }}
             >
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                <span className="w-[72px] flex-none text-[12.5px] font-extrabold text-navy">{formatHourLong(s.hour)}</span>
-                <span className="min-w-0 flex-1 text-[12.5px] font-bold text-ink">{s.task}</span>
-                <span className="text-[9.5px] font-extrabold tracking-[0.08em] uppercase" style={{ color: s.color }}>
+              <div className="flex items-baseline gap-2.5">
+                <span className="w-[64px] flex-none text-[11.5px] font-extrabold text-navy">{formatHourLong(s.hour)}</span>
+                <span className="min-w-0 flex-1 truncate text-[11.5px] text-body">
+                  {note ? (
+                    <span className="font-bold" style={{ color: s.color }}>
+                      {note}
+                    </span>
+                  ) : (
+                    <>
+                      <span className="font-bold text-ink sm:hidden">{s.short}</span>
+                      <span className="hidden font-bold text-ink sm:inline">{s.task}</span>
+                    </>
+                  )}
+                  {note ? <span className="ml-2 hidden text-[10.5px] text-muted sm:inline">{s.task}</span> : null}
+                </span>
+                {canEdit && !open ? (
+                  <button
+                    type="button"
+                    onClick={() => setOpenHour(s.hour)}
+                    aria-label={`${note ? "Edit" : "Add"} what you'll do at ${formatHourLong(s.hour)}`}
+                    className="flex-none px-1 text-[10.5px] font-extrabold text-muted underline transition hover:text-navy print:hidden"
+                  >
+                    {note ? "edit" : "add"}
+                  </button>
+                ) : null}
+                <span className="hidden flex-none text-[9px] font-extrabold tracking-[0.06em] uppercase sm:inline" style={{ color: s.color }}>
                   {s.zone}
                 </span>
               </div>
 
-              {note && !open ? (
-                <p className="m-0 mt-0.5 ml-[84px] text-[12px] leading-[1.4] font-bold wrap-anywhere" style={{ color: s.color }}>
-                  {note}
-                </p>
-              ) : null}
-
-              {canEdit ? (
-                <div className="mt-0.5 ml-[84px] print:hidden">
-                  {open ? (
-                    <div>
-                      <label htmlFor={`plan-note-${s.hour}`} className="sr-only">
-                        What you&rsquo;ll do at {formatHourLong(s.hour)}
-                      </label>
-                      <textarea
-                        id={`plan-note-${s.hour}`}
-                        value={note}
-                        autoFocus
-                        rows={2}
-                        maxLength={MAX_NOTE}
-                        placeholder="e.g. Write the board deck — no email, phone away"
-                        onChange={(e) => edit(s.hour, e.target.value)}
-                        onBlur={() => {
-                          flush(s.hour);
-                          setOpenHour(null);
-                        }}
-                        className="w-full resize-y rounded-xl border-[1.5px] border-line bg-white px-3 py-2 text-[13.5px] leading-[1.5] text-ink outline-none transition focus:border-gold focus:ring-4 focus:ring-gold/20"
-                      />
-                      <div className="mt-1 flex items-center justify-between text-[11px] text-muted">
-                        <span>{MAX_NOTE - note.length} left</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            flush(s.hour);
-                            setOpenHour(null);
-                          }}
-                          className="inline-flex min-h-9 items-center px-2 font-extrabold text-navy underline"
-                        >
-                          Done
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
+              {canEdit && open ? (
+                <div className="py-1.5 pl-[64px] print:hidden">
+                  <label htmlFor={`plan-note-${s.hour}`} className="sr-only">
+                    What you&rsquo;ll do at {formatHourLong(s.hour)}
+                  </label>
+                  <textarea
+                    id={`plan-note-${s.hour}`}
+                    value={note}
+                    autoFocus
+                    rows={2}
+                    maxLength={MAX_NOTE}
+                    placeholder="e.g. Write the board deck — no email, phone away"
+                    onChange={(e) => edit(s.hour, e.target.value)}
+                    onBlur={() => {
+                      flush(s.hour);
+                      setOpenHour(null);
+                    }}
+                    className="w-full resize-y rounded-xl border-[1.5px] border-line bg-white px-3 py-2 text-[13.5px] leading-[1.5] text-ink outline-none transition focus:border-gold focus:ring-4 focus:ring-gold/20"
+                  />
+                  <div className="mt-1 flex items-center justify-between text-[11px] text-muted">
+                    <span>{MAX_NOTE - note.length} left</span>
                     <button
                       type="button"
-                      onClick={() => setOpenHour(s.hour)}
-                      className="inline-flex min-h-9 items-center self-start text-[12px] font-extrabold text-muted underline transition hover:text-navy"
+                      onClick={() => {
+                        flush(s.hour);
+                        setOpenHour(null);
+                      }}
+                      className="inline-flex min-h-9 items-center px-2 font-extrabold text-navy underline"
                     >
-                      {note ? "Edit what you’ll do" : "Add what you’ll do"}
+                      Done
                     </button>
-                  )}
+                  </div>
                 </div>
               ) : null}
             </li>

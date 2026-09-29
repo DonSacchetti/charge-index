@@ -249,6 +249,50 @@ try {
   expect(denied(await bob.db.from("tracking_sessions").insert({ client_id: bob.id, label: "rls-check", wake_time: "06:00", sleep_time: "22:00", day_count: 5 })), "but only one per purchase");
   expect(!(await coach.db.from("tracking_sessions").insert({ client_id: coach.id, label: "rls-check", wake_time: "06:00", sleep_time: "22:00", day_count: 5 })).error && !(await coach.db.from("tracking_sessions").insert({ client_id: coach.id, label: "rls-check", wake_time: "06:00", sleep_time: "22:00", day_count: 5 })).error, "coaches aren't limited — Jen tracks her own energy");
 
+  console.log("\nReviewing a flag is Jen's alone");
+  expect(
+    Boolean((await alice.db.rpc("set_session_flag_review", { p_session: aliceSession, p_clear: true })).error),
+    "a client cannot mark their own session reviewed",
+  );
+  expect(
+    Boolean((await alice.db.from("tracking_sessions").update({ flag_cleared_at: new Date().toISOString() }).eq("id", aliceSession)).error) ||
+      (await admin.from("tracking_sessions").select("flag_cleared_at").eq("id", aliceSession).single()).data?.flag_cleared_at === null,
+    "nor write the column directly",
+  );
+  expect(!(await coach.db.rpc("set_session_flag_review", { p_session: aliceSession, p_clear: true })).error, "a coach can");
+  expect(
+    (await admin.from("tracking_sessions").select("flag_cleared_at").eq("id", aliceSession).single()).data?.flag_cleared_at !== null,
+    "and it lands on the session",
+  );
+  expect(!(await coach.db.rpc("set_session_flag_review", { p_session: aliceSession, p_clear: false })).error, "and can put it back");
+  // The stamp is what makes the flag return: an edited hour has to move its
+  // updated_at, or re-filling the same grid would stay invisible.
+  const { data: beforeEdit } = await admin
+    .from("daily_entries")
+    .select("updated_at")
+    .eq("session_id", aliceSession)
+    .limit(1)
+    .single();
+  await admin
+    .from("daily_entries")
+    .update({ energy_pct: 10 })
+    .eq("session_id", aliceSession)
+    .eq("day_number", 1)
+    .eq("slot_hour", "09:00");
+  const { data: afterEdit } = await admin
+    .from("daily_entries")
+    .select("updated_at")
+    .eq("session_id", aliceSession)
+    .eq("day_number", 1)
+    .eq("slot_hour", "09:00")
+    .single();
+  expect(Boolean(afterEdit && beforeEdit && afterEdit.updated_at > beforeEdit.updated_at), "changing an entry moves its updated_at");
+  expect(denied(await alice.db.from("daily_entries").update({ updated_at: "2020-01-01T00:00:00Z" }).eq("session_id", aliceSession)), "a client cannot backdate that stamp");
+  expect(
+    !(await alice.db.from("tracking_sessions").update({ status: "completed" }).eq("id", aliceSession)).error,
+    "a client can still finish their own session",
+  );
+
   console.log("\nPeak Plan notes — a paid feature, client-written only");
   // seedSession() already gave alice a completed basic_peak_plan purchase.
   expect(!(await alice.db.from("plan_notes").upsert({ session_id: aliceSession, slot_hour: "09:00", body: "Deep work" }, { onConflict: "session_id,slot_hour" })).error, "a client with the plan can write a note on their own hour");

@@ -61,3 +61,15 @@ export async function revokeSession(clientId: string, grantId: string) {
   await supabase.from("session_grants").delete().eq("id", grantId).eq("client_id", clientId);
   revalidatePath(`/coach/clients/${clientId}`);
 }
+
+/**
+ * Mark a flagged session as reviewed, or bring the flag back (Josh,
+ * 2026-09-29). Clearing stamps the time; anything the client logs after that
+ * raises the flag again by itself.
+ */
+export async function reviewFlag(clientId: string, sessionId: string, clear: boolean) {
+  const { supabase } = await requireCoach(`/coach/clients/${clientId}`);
+  await supabase.rpc("set_session_flag_review", { p_session: sessionId, p_clear: clear });
+  revalidatePath(`/coach/clients/${clientId}`);
+  revalidatePath("/coach");
+}
