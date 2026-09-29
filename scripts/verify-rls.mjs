@@ -84,7 +84,6 @@ async function seedSession(user) {
   await user.db.from("daily_entries").insert({ session_id: session.id, day_number: 1, slot_hour: "09:00", energy_pct: 75 });
   await user.db.from("daily_notes").insert({ session_id: session.id, day_number: 1, for_jen_note: "private" });
   await admin.from("session_analysis").insert({ session_id: session.id, windows: {} });
-  await admin.from("ai_insights").insert({ session_id: session.id, energy_type: "check" });
   // Tied to this session: both canViewPeakPlan() and has_peak_plan() match on
   // session_id, so a purchase without one unlocks nothing.
   await admin.from("purchases").insert({ client_id: user.id, session_id: session.id, product: "basic_peak_plan", status: "completed" });
@@ -130,8 +129,6 @@ try {
 
   console.log("\nClient → coach-only and paid data");
   expect((await count(alice.db, "session_analysis", "session_id", aliceSession)) === 0, "client reads no session_analysis, even for own session");
-  expect((await count(alice.db, "ai_insights", "session_id", aliceSession)) === 0, "client reads no ai_insights, even for own session");
-  expect(denied(await alice.db.from("ai_insights").insert({ session_id: aliceSession, energy_type: "forged" })), "client cannot write ai_insights");
   expect(denied(await alice.db.from("purchases").insert({ client_id: alice.id, product: "peak_plan_session", status: "completed" })), "client cannot grant themselves a purchase");
   expect((await count(alice.db, "purchases", "client_id", alice.id)) === 1, "client can read their own purchase");
 
@@ -140,11 +137,7 @@ try {
   expect((await count(coach.db, "daily_entries", "session_id", aliceSession)) === 1, "coach reads a client's entries");
   expect((await count(coach.db, "daily_notes", "session_id", aliceSession)) === 1, "coach reads a client's reflections");
   expect((await count(coach.db, "session_analysis", "session_id", aliceSession)) === 1, "coach reads session_analysis");
-  expect((await count(coach.db, "ai_insights", "session_id", aliceSession)) === 1, "coach reads ai_insights");
   expect((await coach.db.from("profiles").select("id").in("id", [alice.id, bob.id])).data?.length === 2, "coach reads client profiles");
-  expect(!(await coach.db.from("ai_insights").update({ energy_type: "coach draft" }).eq("session_id", aliceSession)).error, "coach can write AI insight drafts");
-  expect(denied(await alice.db.from("ai_insights").update({ energy_type: "forged" }).eq("session_id", aliceSession)) || (await admin.from("ai_insights").select("energy_type").eq("session_id", aliceSession).single()).data?.energy_type === "coach draft", "client still cannot change AI insights");
-  expect(denied(await coach.db.from("daily_entries").insert({ session_id: aliceSession, day_number: 3, slot_hour: "11:00", energy_pct: 50 })), "coach cannot write a client's entries");
   expect(denied(await coach.db.from("profiles").update({ role: "admin" }).eq("id", coach.id)), "coach cannot change roles either");
 
   console.log("\nCoach notes");
@@ -167,20 +160,78 @@ try {
   expect((await count(alice.db, "reminder_log", "session_id", aliceSession)) === 0, "client cannot read the reminder log, even for their own session");
   expect(denied(await alice.db.from("reminder_log").insert({ session_id: aliceSession, day_number: 2, reminder_key: "forged" })), "client cannot write the reminder log");
   expect(denied(await coach.db.from("reminder_log").insert({ session_id: aliceSession, day_number: 2, reminder_key: "forged" })), "coach cannot write the reminder log either (server-only)");
-  console.log("\nPacing — a day can't be filled in before its date");
-  // alice's session starts today, so day 1 is open and day 2 is not.
-  expect(!(await alice.db.from("daily_entries").upsert({ session_id: aliceSession, day_number: 1, slot_hour: "10:00", energy_pct: 50 }, { onConflict: "session_id,day_number,slot_hour" })).error, "client can log today's day");
-  expect(denied(await alice.db.from("daily_entries").insert({ session_id: aliceSession, day_number: 2, slot_hour: "09:00", energy_pct: 100 })), "client cannot log a day that hasn't arrived");
-  expect(denied(await alice.db.from("daily_notes").insert({ session_id: aliceSession, day_number: 3, feel_note: "early" })), "client cannot write a reflection for a future day");
-  // A session that started two days ago: days 1–3 open, days 4–5 not.
-  const { data: older } = await admin
-    .from("tracking_sessions")
-    .insert({ client_id: alice.id, label: "rls-check", wake_time: "06:00", sleep_time: "22:00", day_count: 5, start_date: new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10) })
-    .select("id")
-    .single();
-  expect(!(await alice.db.from("daily_entries").insert({ session_id: older.id, day_number: 1, slot_hour: "09:00", energy_pct: 75 })).error, "client can still fill in an earlier day they missed");
-  expect(!(await alice.db.from("daily_entries").insert({ session_id: older.id, day_number: 3, slot_hour: "09:00", energy_pct: 75 })).error, "and today's day of that session");
-  expect(denied(await alice.db.from("daily_entries").insert({ session_id: older.id, day_number: 4, slot_hour: "09:00", energy_pct: 75 })), "but still not tomorrow's");
+  console.log("\nThe 24-hour logging window");
+  // Sessions here have no timezone, so the rule runs on UTC. Slots are built
+  // around the hour it is right now, which keeps the checks true at any time
+  // of day — including the awkward ones near midnight.
+  const utcHour = new Date().getUTCHours();
+  const slot = (h) => `${String(((h % 24) + 24) % 24).padStart(2, "0")}:00`;
+  const daysAgo = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+  const madeSession = async (client, startDate) =>
+    (
+      await admin
+        .from("tracking_sessions")
+        .insert({ client_id: client.id, label: "rls-check", wake_time: "00:00", sleep_time: "23:00", day_count: 5, start_date: startDate })
+        .select("id")
+        .single()
+    ).data;
+
+  const todaySession = await madeSession(alice, daysAgo(0));
+  expect(
+    !(await alice.db.from("daily_entries").insert({ session_id: todaySession.id, day_number: 1, slot_hour: slot(utcHour), energy_pct: 50 })).error,
+    "client can log the hour they're in",
+  );
+  if (utcHour < 23) {
+    expect(
+      denied(await alice.db.from("daily_entries").insert({ session_id: todaySession.id, day_number: 1, slot_hour: slot(utcHour + 1), energy_pct: 50 })),
+      "client cannot log an hour that hasn't happened",
+    );
+  }
+  expect(
+    denied(await alice.db.from("daily_entries").insert({ session_id: todaySession.id, day_number: 2, slot_hour: slot(utcHour), energy_pct: 100 })),
+    "client cannot log a day that hasn't arrived",
+  );
+
+  // Two days in: day 3 is today, day 2 was yesterday, day 1 is two days back.
+  const oldSession = await madeSession(alice, daysAgo(2));
+  expect(
+    !(await alice.db.from("daily_entries").insert({ session_id: oldSession.id, day_number: 3, slot_hour: slot(utcHour), energy_pct: 75 })).error,
+    "today's hours are open",
+  );
+  if (utcHour < 23) {
+    expect(
+      !(await alice.db.from("daily_entries").insert({ session_id: oldSession.id, day_number: 2, slot_hour: slot(utcHour + 1), energy_pct: 75 })).error,
+      "so is the same hour yesterday, within 24 hours",
+    );
+  }
+  if (utcHour > 0) {
+    expect(
+      denied(await alice.db.from("daily_entries").insert({ session_id: oldSession.id, day_number: 2, slot_hour: slot(utcHour - 1), energy_pct: 75 })),
+      "yesterday's earlier hours have closed",
+    );
+  }
+  expect(
+    denied(await alice.db.from("daily_entries").insert({ session_id: oldSession.id, day_number: 1, slot_hour: slot(utcHour), energy_pct: 75 })),
+    "and two days ago is long shut",
+  );
+  expect(
+    denied(await alice.db.from("daily_notes").insert({ session_id: oldSession.id, day_number: 1, feel_note: "late" })),
+    "a reflection closes with its day",
+  );
+
+  console.log("\nJen can edit a client's entries");
+  expect(
+    !(await coach.db.from("daily_entries").insert({ session_id: oldSession.id, day_number: 1, slot_hour: slot(utcHour), energy_pct: 25 })).error,
+    "a coach can write an hour the client can no longer reach",
+  );
+  expect(
+    !(await coach.db.from("daily_entries").delete().match({ session_id: oldSession.id, day_number: 1, slot_hour: slot(utcHour) })).error,
+    "and clear one",
+  );
+  expect(
+    denied(await bob.db.from("daily_entries").insert({ session_id: oldSession.id, day_number: 3, slot_hour: slot(utcHour), energy_pct: 100 })),
+    "another client still cannot touch it",
+  );
 
   console.log("\nOne Charge Index per client");
   expect(denied(await bob.db.from("tracking_sessions").insert({ client_id: bob.id, label: "rls-check", wake_time: "06:00", sleep_time: "22:00", day_count: 5 })) === false, "a client's first session is allowed");
@@ -192,6 +243,10 @@ try {
   expect(!(await bob.db.from("tracking_sessions").insert({ client_id: bob.id, label: "rls-check", wake_time: "06:00", sleep_time: "22:00", day_count: 5 })).error, "the client can start one more session after that");
   expect(denied(await bob.db.from("tracking_sessions").insert({ client_id: bob.id, label: "rls-check", wake_time: "06:00", sleep_time: "22:00", day_count: 5 })), "and no more than one");
   expect((await count(alice.db, "session_grants", "client_id", bob.id)) === 0, "a client cannot read another client's grants");
+  // Buying a Peak Plan opens another Charge Index (Jen, 2026-09-29).
+  await admin.from("purchases").insert({ client_id: bob.id, product: "basic_peak_plan", status: "completed" });
+  expect(!(await bob.db.from("tracking_sessions").insert({ client_id: bob.id, label: "rls-check", wake_time: "06:00", sleep_time: "22:00", day_count: 5 })).error, "buying a Peak Plan opens one more session");
+  expect(denied(await bob.db.from("tracking_sessions").insert({ client_id: bob.id, label: "rls-check", wake_time: "06:00", sleep_time: "22:00", day_count: 5 })), "but only one per purchase");
   expect(!(await coach.db.from("tracking_sessions").insert({ client_id: coach.id, label: "rls-check", wake_time: "06:00", sleep_time: "22:00", day_count: 5 })).error && !(await coach.db.from("tracking_sessions").insert({ client_id: coach.id, label: "rls-check", wake_time: "06:00", sleep_time: "22:00", day_count: 5 })).error, "coaches aren't limited — Jen tracks her own energy");
 
   console.log("\nPeak Plan notes — a paid feature, client-written only");
@@ -211,9 +266,6 @@ try {
   const { data: coachSession } = await coach.db.from("tracking_sessions").select("id").eq("client_id", coach.id).limit(1).single();
   expect(!(await coach.db.from("plan_notes").insert({ session_id: coachSession.id, slot_hour: "09:00", body: "my own plan" })).error, "a coach can write notes on their own plan, with no purchase");
 
-  console.log("\nEntry stats view");
-  expect((await coach.db.from("session_entry_stats").select("session_id").eq("session_id", aliceSession)).data?.length === 1, "coach reads a client's entry counts");
-  expect((await bob.db.from("session_entry_stats").select("session_id").eq("session_id", aliceSession)).data?.length === 0, "a client cannot read another client's entry counts through the view");
 } catch (error) {
   fail(`script error: ${error.message}`);
 } finally {

@@ -119,6 +119,21 @@ export function isHourOpen(
   return current >= start && current < start + LOGGING_WINDOW_HOURS * 60;
 }
 
+/**
+ * Where an hour sits relative to now: not yet lived, open for logging, or
+ * past its 24 hours. The screen words these differently — an hour later today
+ * isn't "closed", it just hasn't happened.
+ */
+export function hourStatus(
+  args: Parameters<typeof isHourOpen>[0],
+  now = new Date(),
+): "upcoming" | "open" | "closed" {
+  const start = hourStart(args.startDate, args.dayNumber, args.hour, args.wakeHour);
+  const current = nowInZone(args.timezone, now);
+  if (current < start) return "upcoming";
+  return current < start + LOGGING_WINDOW_HOURS * 60 ? "open" : "closed";
+}
+
 /** Minutes left before an hour closes; 0 once it has. */
 export function minutesLeft(
   { startDate, dayNumber, hour, wakeHour, timezone }: Parameters<typeof isHourOpen>[0],

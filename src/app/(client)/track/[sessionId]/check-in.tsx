@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { FieldLabel, PageBody, PageHero, SectionLabel, Surface } from "@/components/AppShell";
-import { dayHasStarted, isHourOpen } from "@/lib/days";
+import { dayHasStarted, hourStatus } from "@/lib/days";
 import { useSaveQueue } from "@/hooks/useSaveQueue";
 import { SCALE, scaleOf } from "@/lib/charge";
 import {
@@ -108,9 +108,10 @@ export function CheckIn({
   const nextLocked = day + 1 < dayCount && !started(day + 2);
   // Jen's 24-hour window, hour by hour (2026-09-29). Recomputed on a timer so
   // an hour closes while the screen is open rather than on the next reload.
-  const hourOpen = (hour: number, n = dayNumber) =>
-    isHourOpen({ startDate, dayNumber: n, hour, wakeHour, timezone }, clock);
-  const closedCount = hours.filter((h) => !hourOpen(h) && current.slots[h] === undefined).length;
+  const statusOf = (hour: number, n = dayNumber) =>
+    hourStatus({ startDate, dayNumber: n, hour, wakeHour, timezone }, clock);
+  const hourOpen = (hour: number, n = dayNumber) => statusOf(hour, n) === "open";
+  const closedCount = hours.filter((h) => statusOf(h) === "closed").length;
 
   // ── writes ──────────────────────────────────────────────────────────────
 
@@ -413,7 +414,7 @@ export function CheckIn({
                   <h2 className="font-serif text-[22px] font-semibold text-navy">One tap an hour</h2>
                   {closedCount ? (
                     <p className="mt-0.5 text-[11.5px] font-bold text-muted">
-                      {closedCount} {closedCount === 1 ? "hour has" : "hours have"} closed — each stays open for 24 hours.
+                      {closedCount} {closedCount === 1 ? "hour has" : "hours have"} closed — an hour stays open for 24 hours.
                     </p>
                   ) : null}
                 </div>
@@ -441,7 +442,8 @@ export function CheckIn({
                   const selected = current.slots[hour];
                   const selectedScale = selected !== undefined ? scaleOf(selected) : null;
                   // Open from the moment the hour starts until 24 hours later.
-                  const open = hourOpen(hour);
+                  const state = statusOf(hour);
+                  const open = state === "open";
                   return (
                     <div key={hour} className={open ? undefined : "opacity-55"}>
                       <div
@@ -453,7 +455,7 @@ export function CheckIn({
                           {formatHour(hour)}
                           {!open ? (
                             <span className="block text-[9.5px] leading-tight font-bold text-muted">
-                              {selectedScale ? "locked" : "closed"}
+                              {state === "upcoming" ? "later" : "closed"}
                             </span>
                           ) : null}
                         </div>
