@@ -12,13 +12,12 @@ describe("buildRoster", () => {
   const roster = buildRoster(
     [profile("amy", "Amy"), profile("ben", "Ben"), profile("cat", null), profile("dan", "Dan")],
     [session("a1", "amy", "2026-03-01"), session("a2", "amy", "2026-09-01", "in_progress"), session("b1", "ben", "2026-06-01")],
-    new Set(["a1"]),
     ["amy", "amy", "ben"],
   );
 
-  it("aggregates sessions, drafts and notes per client", () => {
+  it("aggregates sessions and notes per client", () => {
     const amy = roster.find((c) => c.id === "amy")!;
-    expect(amy).toMatchObject({ sessionCount: 2, completedCount: 1, draftCount: 1, noteCount: 2 });
+    expect(amy).toMatchObject({ sessionCount: 2, completedCount: 1, noteCount: 2 });
     expect(amy.latest?.id).toBe("a2");
   });
 
@@ -26,7 +25,6 @@ describe("buildRoster", () => {
     const flagged = buildRoster(
       [profile("amy", "Amy"), profile("ben", "Ben")],
       [session("a1", "amy", "2026-03-01"), session("a2", "amy", "2026-09-01"), session("b1", "ben", "2026-06-01")],
-      new Set(),
       [],
       [
         // Amy: 40 hours, 36 of them at 100% — over the 80% share, over the floor.
@@ -53,7 +51,6 @@ describe("buildRoster", () => {
     const withStaff = buildRoster(
       [profile("amy", "Amy"), profile("jen", "Jen", "jen@example.com", "admin"), profile("kate", "Kate", "kate@example.com", "coach")],
       [session("j1", "jen", "2026-09-10")],
-      new Set(),
       [],
     );
     expect(withStaff.map((c) => [c.id, c.role])).toEqual([["jen", "admin"], ["amy", "client"]]);
@@ -75,11 +72,11 @@ describe("buildSummaryCsv", () => {
     const csv = buildSummaryCsv([{
       clientName: "Amy", clientEmail: "amy@example.com", label: "=Spring", status: "completed",
       startDate: "2026-03-01", dayCount: 5, wake: 6, sleep: 22, hoursLogged: 72, coveragePct: 90, completeDays: 4,
-      windows: { peak: [9, 10], collaboration: [], recovery: [18] }, energyType: null,
+      windows: { peak: [9, 10], collaboration: [], recovery: [18] },
     }]);
     const lines = csv.replace(/^﻿/, "").trimEnd().split("\r\n");
     expect(lines).toHaveLength(2);
-    expect(lines[1]).toBe('"Amy","amy@example.com","\'=Spring","Complete","2026-03-01","5","6 AM – 10 PM","72","90%","4","9 AM – 11 AM","—","6 PM – 7 PM",""');
+    expect(lines[1]).toBe('"Amy","amy@example.com","\'=Spring","Complete","2026-03-01","5","6 AM – 10 PM","72","90%","4","9 AM – 11 AM","—","6 PM – 7 PM"');
   });
 });
 

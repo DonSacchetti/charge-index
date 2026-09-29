@@ -12,7 +12,7 @@ type Db = SupabaseClient<Database>;
 
 /** Everything the roster needs, read in pages past the 1,000-row cap. */
 export async function loadRosterData(supabase: Db) {
-  const [profiles, sessions, drafts, notes, entryStats] = await Promise.all([
+  const [profiles, sessions, notes, entryStats] = await Promise.all([
     fetchAll((from, to) =>
       supabase.from("profiles").select("id, full_name, email, created_at, role").order("id").range(from, to),
     ),
@@ -23,7 +23,6 @@ export async function loadRosterData(supabase: Db) {
         .order("id")
         .range(from, to),
     ),
-    fetchAll((from, to) => supabase.from("ai_insights").select("session_id").order("session_id").range(from, to)),
     fetchAll((from, to) => supabase.from("coach_notes").select("client_id").order("id").range(from, to)),
     fetchAll((from, to) =>
       supabase
@@ -36,7 +35,6 @@ export async function loadRosterData(supabase: Db) {
   return {
     profiles,
     sessions,
-    draftSessionIds: new Set(drafts.map((d) => d.session_id)),
     noteClientIds: notes.map((n) => n.client_id),
     // The view's columns are nullable to Postgres; a row always has them.
     entryStats: entryStats.map((r) => ({
@@ -65,7 +63,7 @@ export async function loadSessionBundles(supabase: Db, clientId?: string) {
   // One client has few sessions, so filter by id; for everyone, read it all
   // rather than build an id list too long for a URL.
   const ids = sessions.map((s) => s.id);
-  const [entries, notes, insights] = await Promise.all([
+  const [entries, notes] = await Promise.all([
     fetchAll((from, to) => {
       let q = supabase.from("daily_entries").select("session_id, day_number, slot_hour, energy_pct");
       if (clientId) q = q.in("session_id", ids);
@@ -75,11 +73,6 @@ export async function loadSessionBundles(supabase: Db, clientId?: string) {
       let q = supabase.from("daily_notes").select("session_id, day_number, feel_note, unexpected_note, for_jen_note");
       if (clientId) q = q.in("session_id", ids);
       return q.order("id").range(from, to);
-    }),
-    fetchAll((from, to) => {
-      let q = supabase.from("ai_insights").select("session_id, energy_type");
-      if (clientId) q = q.in("session_id", ids);
-      return q.order("session_id").range(from, to);
     }),
   ]);
 
@@ -93,7 +86,6 @@ export async function loadSessionBundles(supabase: Db, clientId?: string) {
   };
   const entriesBy = group(entries);
   const notesBy = group(notes);
-  const energyBy = new Map(insights.map((i) => [i.session_id, i.energy_type]));
 
   return sessions.map((session) => {
     const analysis = analyseSession(session, entriesBy.get(session.id) ?? [], notesBy.get(session.id) ?? []);
@@ -102,7 +94,6 @@ export async function loadSessionBundles(supabase: Db, clientId?: string) {
       session,
       clientName: session.profiles?.full_name ?? null,
       clientEmail: session.profiles?.email ?? null,
-      energyType: energyBy.get(session.id) ?? null,
       consistency: c,
       ...analysis,
     };
@@ -125,6 +116,5 @@ export function toSummaryRow(b: SessionBundle): SummaryRow {
     coveragePct: b.consistency.coveragePct,
     completeDays: b.consistency.completeDays,
     windows: b.windows,
-    energyType: b.energyType,
   };
 }

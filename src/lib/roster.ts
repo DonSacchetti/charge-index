@@ -37,7 +37,6 @@ export type RosterClient = {
   sessionCount: number;
   completedCount: number;
   latest: RosterSession | null;
-  draftCount: number;
   noteCount: number;
   hoursLogged: number;
   /**
@@ -49,8 +48,8 @@ export type RosterClient = {
 };
 
 /**
- * One row per client: session counts, the most recent session, how many AI
- * drafts and notes exist. Sorted so the clients Jen most likely needs are on
+ * One row per client: session counts, the most recent session, how many notes
+ * exist. Sorted so the clients Jen most likely needs are on
  * top — most recently started session first, then clients with none, by name.
  *
  * Coaches and admins appear only if they've tracked a session themselves —
@@ -59,7 +58,6 @@ export type RosterClient = {
 export function buildRoster(
   profiles: RosterProfile[],
   sessions: RosterSession[],
-  draftSessionIds: Set<string>,
   noteClientIds: string[],
   entryStats: EntryStat[] = [],
 ): RosterClient[] {
@@ -98,7 +96,6 @@ export function buildRoster(
         sessionCount: own.length,
         completedCount: own.filter((s) => s.status === "completed").length,
         latest: own[0] ?? null,
-        draftCount: own.filter((s) => draftSessionIds.has(s.id)).length,
         noteCount: notes.get(p.id) ?? 0,
         hoursLogged: hours.hours,
         flatTop: isFlatTopCounts(hours.hours, hours.top),
@@ -131,7 +128,6 @@ export type SummaryRow = {
   coveragePct: number;
   completeDays: number;
   windows: Windows;
-  energyType: string | null;
 };
 
 /**
@@ -143,14 +139,13 @@ export function buildSummaryCsv(rows: SummaryRow[]): string {
   const header = [
     "Client", "Email", "Session", "Status", "Started", "Days", "Waking hours",
     "Hours logged", "Hours covered", "Complete days", "Peak window",
-    "Collaboration window", "Recovery window", "AI energy type",
+    "Collaboration window", "Recovery window",
   ];
   const lines = [header, ...rows.map((r) => [
     r.clientName, r.clientEmail, r.label, r.status === "completed" ? "Complete" : "In progress",
     r.startDate, r.dayCount, `${formatHour(r.wake)} – ${formatHour(r.sleep)}`,
     r.hoursLogged, `${r.coveragePct}%`, r.completeDays,
     formatWindow(r.windows.peak), formatWindow(r.windows.collaboration), formatWindow(r.windows.recovery),
-    r.energyType,
   ])];
   return "﻿" + lines.map((l) => l.map(csvCell).join(",")).join("\r\n") + "\r\n";
 }

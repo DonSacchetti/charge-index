@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { PageBody, PageHero, SectionLabel, Surface } from "@/components/AppShell";
-import { ChargeCurve } from "@/components/ChargeCurve";
 import { loadSessionAnalysis } from "@/lib/session-data";
 import { formatHour } from "@/lib/slots";
 import { canViewPeakPlan, requireViewer } from "@/lib/viewer";
@@ -39,7 +38,7 @@ export default async function CompletePage({
   ]);
 
   if (!data) notFound();
-  const { session, wake, sleep, entries, map, topPeak, hasEnoughData } = data;
+  const { session, wake, sleep, entries, topPeak, hasEnoughData } = data;
   if (session.status !== "completed") redirect(`/track/${sessionId}`);
   const hasPlan = await canViewPeakPlan(viewer, session);
 
@@ -61,8 +60,8 @@ export default async function CompletePage({
         title={<>Thanks, {first}.</>}
         lead={
           hasEnoughData
-            ? "Your Charge Index is complete. Your curve and your peak hours are yours to keep, free. Where you go next is up to you."
-            : `Your entries are saved. There aren't quite enough hours yet to read your pattern honestly — ${shortfall} more and your curve appears here.`
+            ? "Your Charge Index is complete. Your peak hours are yours to keep, free. Where you go next is up to you."
+            : `Your entries are saved. There aren't quite enough hours yet to read your pattern honestly — ${shortfall} more and your peak hours appear here.`
         }
         progress={{ total: steps, current: steps - 1 }}
         aside={
@@ -128,7 +127,7 @@ export default async function CompletePage({
                 <p className="mt-2 text-[14px] leading-[1.6] text-body">
                   A pattern needs enough hours behind it to mean anything. Below {MIN_HOURS_FOR_RESULT} logged hours the
                   app holds back rather than naming hours it can&rsquo;t stand behind. Your entries are safe — log{" "}
-                  {shortfall} more {shortfall === 1 ? "hour" : "hours"} and your curve and peak hours appear here.
+                  {shortfall} more {shortfall === 1 ? "hour" : "hours"} and your peak hours appear here.
                 </p>
                 <div className="mt-6 h-2.5 overflow-hidden rounded-full bg-cream" role="img" aria-label={`${entries.length} of ${MIN_HOURS_FOR_RESULT} hours logged`}>
                   <span
@@ -141,22 +140,6 @@ export default async function CompletePage({
                 </div>
               </Surface>
             )}
-
-            {hasEnoughData ? (
-              <Surface className="p-6 sm:p-8" delay={120}>
-                <SectionLabel>Your curve</SectionLabel>
-                <h2 className="font-serif text-[24px] font-semibold text-navy">Your day, hour by hour</h2>
-                <p className="mt-2 mb-5 text-[14px] leading-[1.6] text-body">
-                  Your average charge for each waking hour, across every day you logged.
-                </p>
-                <ChargeCurve
-                  map={map}
-                  windows={{ peak: topPeak, collaboration: [], recovery: [] }}
-                  dayCount={session.day_count}
-                  peakLabel="Your peak hours"
-                />
-              </Surface>
-            ) : null}
 
             <div className="grid grid-cols-2 gap-4">
               {stats.map((s, i) => (

@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+// Jen works client by client, so the all-sessions list is gone (2026-09-29).
 const LINKS = [
-  { href: "/coach", label: "Clients", match: (p: string) => p === "/coach" || p.startsWith("/coach/clients") },
-  { href: "/coach/sessions", label: "All sessions", match: (p: string) => p.startsWith("/coach/sessions") },
+  { href: "/coach", label: "Clients", match: (p: string) => p === "/coach" || p.startsWith("/coach/") },
 ];
 
 /** Admin-area navigation. "Client view" goes to the same screens a client uses. */

@@ -177,15 +177,13 @@ try {
   r = await get(`/plan/${carolSession}/peak-plan.ics`, carol);
   expect(r.status === 404, "no calendar file when there's no peak window to protect");
   r = await get("/coach", carol);
-  expect(r.status === 404, "client can't open the coach list");
+  expect(r.status === 404, "client can't open the coach roster");
 
   console.log("\nCoach");
-  r = await get("/coach/sessions", coach);
-  expect(r.status === 200 && r.body.includes("Alice paid") && r.body.includes("Alice unpaid") && r.body.includes("Bob pending"), "all-sessions list shows every client's sessions");
   r = await get(`/coach/sessions/${alicePaid}`, coach);
-  expect(r.status === 200 && r.body.includes("Charge curve") && r.body.includes("Draft insights"), "coach session page renders the analysis and insights panel");
+  expect(r.status === 200 && r.body.includes("Charge curve"), "coach session page renders the analysis");
   r = await get(`/coach/sessions/${alicePaid}`, alice);
-  expect(r.status === 404 && !r.body.includes("Draft insights"), "client can't open the coach session page for their own session");
+  expect(r.status === 404 && !r.body.includes("Charge curve"), "client can't open the coach session page for their own session");
   r = await get(`/plan/${bobSession}`, coach);
   expect(r.status === 200, "coach opens any plan, purchased or not");
   r = await get(`/coach/sessions/${alicePaid}/export.csv`, coach);
@@ -210,8 +208,8 @@ try {
   r = await get(`/coach/clients/${tracker.id}`, coach);
   expect(r.status === 200 && r.body.includes("Admin tracks too"), "and has a client page with their sessions");
   r = await get(`/coach/sessions/${alicePaid}`, coach);
-  expect(r.body.includes("Daily log") && r.body.includes("Clients") && r.body.includes("All sessions"), "coach session page shows the daily log and admin navigation");
-  for (const path of [`/coach/clients/${alice.id}`, `/coach/clients/${alice.id}/summary.csv`, `/coach/clients/${alice.id}/sessions.zip`, "/coach/export/sessions.csv", "/coach/sessions"]) {
+  expect(r.body.includes("Daily log") && r.body.includes("Clients") && !r.body.includes("All sessions"), "coach session page shows the daily log, and no all-sessions tab");
+  for (const path of [`/coach/clients/${alice.id}`, `/coach/clients/${alice.id}/summary.csv`, `/coach/clients/${alice.id}/sessions.zip`, "/coach/export/sessions.csv"]) {
     r = await get(path, alice);
     expect(r.status === 404, `client gets 404 for ${path.replace(alice.id, "<own id>")}`);
   }

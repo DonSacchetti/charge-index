@@ -161,7 +161,6 @@ export default async function CoachClientPage({ params }: PageProps<"/coach/clie
                   <th className="px-3 py-3">Peak</th>
                   <th className="px-3 py-3">Collaboration</th>
                   <th className="px-3 py-3">Recovery</th>
-                  <th className="px-3 py-3">AI energy type</th>
                   <th className="px-6 py-3">Open</th>
                 </tr>
               </thead>
@@ -193,7 +192,6 @@ export default async function CoachClientPage({ params }: PageProps<"/coach/clie
                     <td className="px-3 py-3 text-body">{formatWindow(b.windows.peak)}</td>
                     <td className="px-3 py-3 text-body">{formatWindow(b.windows.collaboration)}</td>
                     <td className="px-3 py-3 text-body">{formatWindow(b.windows.recovery)}</td>
-                    <td className="px-3 py-3 text-body">{b.energyType ?? "—"}</td>
                     <td className="px-6 py-3 whitespace-nowrap">
                       <Link href={`/plan/${b.session.id}`} className="font-bold text-navy underline">
                         Plan

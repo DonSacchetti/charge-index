@@ -15,7 +15,7 @@ export default async function CoachRoster({ searchParams }: PageProps<"/coach">)
   const query = typeof q === "string" ? q : "";
 
   const data = await loadRosterData(supabase);
-  const all = buildRoster(data.profiles, data.sessions, data.draftSessionIds, data.noteClientIds, data.entryStats);
+  const all = buildRoster(data.profiles, data.sessions, data.noteClientIds, data.entryStats);
   const clients = filterRoster(all, query);
   const active = all.filter((c) => c.latest?.status === "in_progress").length;
   // Clients logging 100% nearly every hour — Jen wants these visible (2026-09-24).
@@ -83,7 +83,6 @@ export default async function CoachRoster({ searchParams }: PageProps<"/coach">)
                   <th className="px-6 py-3">Client</th>
                   <th className="px-3 py-3">Latest session</th>
                   <th className="px-3 py-3">Sessions</th>
-                  <th className="px-3 py-3">AI drafts</th>
                   <th className="px-6 py-3">Notes</th>
                 </tr>
               </thead>
@@ -132,7 +131,6 @@ export default async function CoachRoster({ searchParams }: PageProps<"/coach">)
                       {c.sessionCount}
                       {c.sessionCount ? <span className="text-muted"> ({c.completedCount} complete)</span> : null}
                     </td>
-                    <td className="px-3 py-3 text-body">{c.draftCount}</td>
                     <td className="px-6 py-3 text-body">{c.noteCount}</td>
                   </tr>
                 ))}
