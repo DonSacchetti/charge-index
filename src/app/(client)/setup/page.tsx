@@ -44,7 +44,10 @@ export default async function SetupPage() {
   // (Jen, 2026-09-24). Staff aren't limited. The database enforces this —
   // can_start_session() in 20260924143000_pacing_and_session_limit.sql.
   const isStaff = profile?.role === "coach" || profile?.role === "admin";
-  const canStart = isStaff || (sessions?.length ?? 0) < 1 + (grantCount ?? 0);
+  // One free, one more per Peak Plan bought, plus anything Jen has reopened
+  // by hand (Jen, 2026-09-29). can_start_session() enforces the same sum.
+  const paidPlans = purchases?.length ?? 0;
+  const canStart = isStaff || (sessions?.length ?? 0) < 1 + (grantCount ?? 0) + paidPlans;
   const latest = sessions?.[0];
   // A plan belongs to one session, so its link lives on that session's card —
   // otherwise an older plan someone paid for is reachable only by URL (Josh,
@@ -205,10 +208,13 @@ export default async function SetupPage() {
           ) : (
             <Surface className="p-6 sm:p-8" accent="gold" delay={60}>
               <SectionLabel>One Charge Index each</SectionLabel>
-              <h2 className="font-serif text-[28px] font-semibold text-navy">You&rsquo;ve had your free session</h2>
+              <h2 className="font-serif text-[28px] font-semibold text-navy">
+                {paidPlans ? "You've used your sessions" : "You've had your free session"}
+              </h2>
               <p className="mt-3 text-[14.5px] leading-[1.7] text-body">
-                The Charge Index is one measurement per person, so the numbers mean something. When you&rsquo;re ready to
-                measure again — a new season, a new role, a plan you want to test — Jen reopens it for you.
+                The Charge Index is one measurement at a time, so the numbers mean something. Buying a Peak Plan opens
+                another, and when you&rsquo;re ready to measure again — a new season, a new role, a plan you want to
+                test — Jen can reopen it for you.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <a

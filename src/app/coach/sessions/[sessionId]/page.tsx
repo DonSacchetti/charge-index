@@ -8,7 +8,7 @@ import { ConsistencyCard } from "@/components/coach/ConsistencyCard";
 import { DailyLog } from "@/components/coach/DailyLog";
 import { IdealDayCard } from "@/components/coach/IdealDayCard";
 import { ZoneCards } from "@/components/coach/ZoneCards";
-import { consistency, idealDay, zoneTopHours } from "@/lib/coach-analysis";
+import { consistency, idealDay, idealZoneHours } from "@/lib/coach-analysis";
 import { alignToAxis, compareAxis } from "@/lib/compare";
 import { PLAN_WINDOWS } from "@/lib/peak-plan";
 import { loadSessionAnalysis } from "@/lib/session-data";
@@ -129,7 +129,7 @@ export default async function CoachSessionPage({
       </Card>
 
       <div className="mb-5">
-        <DailyLog entries={entries} hours={hours} dayCount={session.day_count} />
+        <DailyLog sessionId={session.id} entries={entries} hours={hours} dayCount={session.day_count} />
       </div>
 
       <div className="mb-5 grid gap-5 lg:grid-cols-2">
@@ -138,7 +138,7 @@ export default async function CoachSessionPage({
       </div>
 
       <div className="mb-5">
-        <ZoneCards top={zoneTopHours(entries, hours)} />
+        <ZoneCards hours={idealZoneHours(map)} />
       </div>
 
       {compared.length > 1 ? (

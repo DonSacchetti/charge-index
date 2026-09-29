@@ -4,7 +4,7 @@
  * Index App.dc.html) unless a comment says otherwise.
  */
 
-import { formatHourLong } from "@/lib/slots";
+
 import type { Entry, HourAverage } from "@/lib/weekly-map";
 
 // ── Ideal day ──────────────────────────────────────────────────────────────
@@ -70,35 +70,19 @@ export const ZONE_CARDS: {
 ];
 
 /**
- * For each zone, the (up to) three hours that landed in it most often across
- * all days. Ties break by position in the session's day, earliest first — the
- * prototype relied on JS object key order, which sorts 12 AM before 6 AM on a
- * past-midnight session.
+ * The hours of the ideal day that fall in each zone (Jen, 2026-09-29). She
+ * asked for these cards to read like the window cards above them — the hours
+ * themselves, as ranges — instead of "the three hours this zone came up most",
+ * which mixed raw entry counts into a screen that is otherwise about averages.
  */
-export function zoneTopHours(entries: Entry[], hours: number[]): Record<ZoneCardKey, number[]> {
-  const position = new Map(hours.map((h, i) => [h, i]));
-  const counts: Record<ZoneCardKey, Map<number, number>> = {
-    peak: new Map(),
-    collab: new Map(),
-    low: new Map(),
-    depleted: new Map(),
-  };
-  for (const e of entries) {
-    if (!position.has(e.hour)) continue;
-    const zone = counts[entryZone(e.pct)];
-    zone.set(e.hour, (zone.get(e.hour) ?? 0) + 1);
+export function idealZoneHours(map: HourAverage[]): Record<ZoneCardKey, number[]> {
+  const out: Record<ZoneCardKey, number[]> = { peak: [], collab: [], low: [], depleted: [] };
+  for (const { hour, zone } of idealDay(map)) {
+    if (zone !== "unknown") out[zone].push(hour);
   }
-  const top = (m: Map<number, number>) =>
-    [...m.entries()]
-      .sort((a, b) => b[1] - a[1] || position.get(a[0])! - position.get(b[0])!)
-      .slice(0, 3)
-      .map(([hour]) => hour);
-  return { peak: top(counts.peak), collab: top(counts.collab), low: top(counts.low), depleted: top(counts.depleted) };
+  return out;
 }
 
-export function formatTopHours(hours: number[]): string {
-  return hours.length ? hours.map(formatHourLong).join(" · ") : "No data";
-}
 
 // ── Consistency ────────────────────────────────────────────────────────────
 

@@ -3,10 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   consistency,
   entryZone,
-  formatTopHours,
   idealDay,
   idealZone,
-  zoneTopHours,
+  idealZoneHours,
 } from "@/lib/coach-analysis";
 import type { Entry } from "@/lib/weekly-map";
 
@@ -40,30 +39,6 @@ describe("zone cards", () => {
     expect([100, 75, 50, 25, 10].map(entryZone)).toEqual(["peak", "collab", "low", "low", "depleted"]);
   });
 
-  it("ranks hours by how often they landed in each zone, top three", () => {
-    const entries = [
-      e(1, 9, 100), e(2, 9, 100), e(3, 9, 100),
-      e(1, 10, 100), e(2, 10, 100),
-      e(1, 11, 100),
-      e(1, 12, 100),
-      e(1, 14, 10),
-    ];
-    const top = zoneTopHours(entries, [9, 10, 11, 12, 13, 14]);
-    expect(top.peak).toEqual([9, 10, 11]);
-    expect(top.depleted).toEqual([14]);
-    expect(top.collab).toEqual([]);
-  });
-
-  it("breaks ties by position in the day, past midnight included", () => {
-    const hours = [22, 23, 0];
-    const top = zoneTopHours([e(1, 0, 10), e(1, 22, 10), e(1, 23, 10)], hours);
-    expect(top.depleted).toEqual([22, 23, 0]);
-  });
-
-  it("formats top hours, or 'No data'", () => {
-    expect(formatTopHours([9, 14])).toBe("9:00 AM · 2:00 PM");
-    expect(formatTopHours([])).toBe("No data");
-  });
 });
 
 describe("consistency", () => {
@@ -91,5 +66,24 @@ describe("consistency", () => {
 
   it("handles an empty session", () => {
     expect(consistency([], hours, 5)).toMatchObject({ completeDays: 0, longestStreak: 0, coveragePct: 0 });
+  });
+});
+
+describe("idealZoneHours", () => {
+  const map = (pairs: [number, number | null][]) =>
+    pairs.map(([hour, avgPct]) => ({ hour, avgPct, daysAnswered: 5 }));
+
+  it("groups the ideal day's hours by zone", () => {
+    const hours = idealZoneHours(map([[9, 95], [10, 70], [11, 40], [12, 15], [13, 92]]));
+    expect(hours.peak).toEqual([9, 13]);
+    expect(hours.collab).toEqual([10]);
+    expect(hours.low).toEqual([11]);
+    expect(hours.depleted).toEqual([12]);
+  });
+
+  it("leaves out hours with no data", () => {
+    const hours = idealZoneHours(map([[9, null], [10, 95]]));
+    expect(hours.peak).toEqual([10]);
+    expect(hours.collab).toEqual([]);
   });
 });
