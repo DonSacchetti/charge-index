@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
-import { formatDayDate, sessionDays, unlockedDayCount } from "@/lib/days";
+import { currentDay, formatDayDate, sessionDays } from "@/lib/days";
 import { type DayLog, emptyDay, resumeDay } from "@/lib/progress";
 import { buildSessionSlots, hourOf } from "@/lib/slots";
 import { createClient } from "@/lib/supabase/server";
@@ -58,17 +58,26 @@ export default async function TrackPage({
     d.forJen = n.for_jen_note ?? "";
   }
 
-  // A day opens on its own date, in the client's own timezone (Jen,
-  // 2026-09-24). The database enforces this too; here it decides which day
-  // the screen opens on and which tabs are tappable.
+  // Each hour is open from the moment it starts until 24 hours later (Jen,
+  // 2026-09-29) — the database enforces it; the screen greys out what it
+  // would refuse. Days still can't be reached before they begin.
   const dayDates = sessionDays(session.start_date, session.day_count).map((d) => formatDayDate(d.date));
-  const unlockedDays = unlockedDayCount(session.start_date, session.day_count, session.timezone);
+  const wakeHour = hourOf(session.wake_time);
+  const today = currentDay({
+    startDate: session.start_date,
+    dayCount: session.day_count,
+    wakeHour,
+    timezone: session.timezone,
+  });
 
   const requested = Number(dayParam);
   const initialDay =
     Number.isInteger(requested) && requested >= 1 && requested <= session.day_count
       ? requested - 1
-      : Math.min(resumeDay(days, hours.length), unlockedDays - 1);
+      : // The day they're actually on, so the strip never opens somewhere
+        // they have to scroll away from (Jen, 2026-09-29). If they've fallen
+        // behind on an earlier day that's still open, resumeDay finds it.
+        Math.min(resumeDay(days, hours.length), today - 1);
 
   return (
     <CheckIn
@@ -79,7 +88,10 @@ export default async function TrackPage({
       initialDays={days}
       initialDay={initialDay}
       dayDates={dayDates}
-      unlockedDays={unlockedDays}
+      startDate={session.start_date}
+      wakeHour={wakeHour}
+      timezone={session.timezone}
+      currentDay={today}
     />
   );
 }

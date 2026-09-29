@@ -63,22 +63,91 @@ export function todayInZone(timezone: string | null | undefined, now = new Date(
   }
 }
 
+/** Wall-clock minutes since the epoch — for comparing times within one zone. */
+function wallMinutes(y: number, m: number, d: number, hour = 0, minute = 0): number {
+  return Date.UTC(y, m - 1, d, hour, minute) / 60_000;
+}
+
+/** Now, as wall-clock minutes where the client is. */
+function nowInZone(timezone: string | null | undefined, now: Date): number {
+  const [y, m, d] = todayInZone(timezone, now).split("-").map(Number);
+  const hm = new Intl.DateTimeFormat("en-GB", {
+    timeZone: timezone || "UTC",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(now);
+  const [hour, minute] = hm.split(":").map(Number);
+  return wallMinutes(y, m, d, hour === 24 ? 0 : hour, minute);
+}
+
 /**
- * How many of the session's days are open for logging. Past days stay open —
- * catching up on yesterday evening is normal, and what Jen wants to stop is
- * racing ahead through the whole week in one sitting.
+ * When an hour of a session actually happens, as wall-clock minutes.
  *
- * Mirrored in the database by session_day_unlocked()
- * (20260924143000_pacing_and_session_limit.sql), which is the real boundary.
+ * Slots wrap past midnight: with a 1 AM bedtime the 00:00 slot belongs to the
+ * next calendar day, so any hour below the wake hour is tomorrow's.
  */
-export function unlockedDayCount(
-  startDate: string,
-  dayCount: number,
-  timezone: string | null | undefined,
+export function hourStart(startDate: string, dayNumber: number, hour: number, wakeHour: number): number {
+  const [y, m, d] = startDate.split("-").map(Number);
+  return wallMinutes(y, m, d + (dayNumber - 1) + (hour < wakeHour ? 1 : 0), hour);
+}
+
+/** Jen's window: an hour can be logged for 24 hours after it starts. */
+export const LOGGING_WINDOW_HOURS = 24;
+
+/**
+ * Whether an hour is open for logging (Jen, 2026-09-29): from the moment it
+ * begins until 24 hours later. Before that it hasn't happened; after it,
+ * "what would I have put?" is a guess rather than a record.
+ *
+ * The database decides for real — entry_hour_open() in
+ * 20260929140000_hour_window_and_coach_edits.sql. This is the same rule, so
+ * the screen can grey out what the database would refuse.
+ */
+export function isHourOpen(
+  {
+    startDate,
+    dayNumber,
+    hour,
+    wakeHour,
+    timezone,
+  }: { startDate: string; dayNumber: number; hour: number; wakeHour: number; timezone: string | null | undefined },
+  now = new Date(),
+): boolean {
+  const start = hourStart(startDate, dayNumber, hour, wakeHour);
+  const current = nowInZone(timezone, now);
+  return current >= start && current < start + LOGGING_WINDOW_HOURS * 60;
+}
+
+/** Minutes left before an hour closes; 0 once it has. */
+export function minutesLeft(
+  { startDate, dayNumber, hour, wakeHour, timezone }: Parameters<typeof isHourOpen>[0],
   now = new Date(),
 ): number {
-  const elapsed = daysBetween(startDate, todayInZone(timezone, now)) + 1;
-  return Math.max(1, Math.min(dayCount, elapsed));
+  const closesAt = hourStart(startDate, dayNumber, hour, wakeHour) + LOGGING_WINDOW_HOURS * 60;
+  return Math.max(0, closesAt - nowInZone(timezone, now));
+}
+
+/**
+ * A day is reachable once its first hour has begun. Days ahead of that are
+ * shown as "opens on…"; past days may be reachable but have closed hours.
+ */
+export function dayHasStarted(
+  { startDate, dayNumber, wakeHour, timezone }: { startDate: string; dayNumber: number; wakeHour: number; timezone: string | null | undefined },
+  now = new Date(),
+): boolean {
+  return nowInZone(timezone, now) >= hourStart(startDate, dayNumber, wakeHour, wakeHour);
+}
+
+/** The latest day that has started — where the log should open. */
+export function currentDay(
+  { startDate, dayCount, wakeHour, timezone }: { startDate: string; dayCount: number; wakeHour: number; timezone: string | null | undefined },
+  now = new Date(),
+): number {
+  for (let day = dayCount; day >= 1; day--) {
+    if (dayHasStarted({ startDate, dayNumber: day, wakeHour, timezone }, now)) return day;
+  }
+  return 1;
 }
 
 /**

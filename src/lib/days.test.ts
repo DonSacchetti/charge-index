@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  currentDay,
+  dayHasStarted,
   daysBetween,
   formatDayDate,
   formatDayDateLong,
+  isHourOpen,
+  minutesLeft,
   sessionDays,
   todayInZone,
-  unlockedDayCount,
 } from "@/lib/days";
 
 describe("sessionDays", () => {
@@ -66,32 +69,64 @@ describe("todayInZone", () => {
   });
 });
 
-describe("unlockedDayCount", () => {
+describe("isHourOpen — Jen's 24-hour window", () => {
+  const session = { startDate: "2026-09-24", wakeHour: 7, timezone: "UTC" };
   const at = (iso: string) => new Date(iso);
 
-  it("opens only day 1 on the first day", () => {
-    expect(unlockedDayCount("2026-09-24", 7, "UTC", at("2026-09-24T09:00:00Z"))).toBe(1);
+  it("opens an hour when it starts, not before", () => {
+    expect(isHourOpen({ ...session, dayNumber: 1, hour: 14 }, at("2026-09-24T13:59:00Z"))).toBe(false);
+    expect(isHourOpen({ ...session, dayNumber: 1, hour: 14 }, at("2026-09-24T14:00:00Z"))).toBe(true);
   });
 
-  it("opens one more day per calendar day", () => {
-    expect(unlockedDayCount("2026-09-24", 7, "UTC", at("2026-09-25T00:05:00Z"))).toBe(2);
-    expect(unlockedDayCount("2026-09-24", 7, "UTC", at("2026-09-27T23:59:00Z"))).toBe(4);
+  it("keeps it open for 24 hours, then closes it", () => {
+    expect(isHourOpen({ ...session, dayNumber: 1, hour: 14 }, at("2026-09-25T13:59:00Z"))).toBe(true);
+    expect(isHourOpen({ ...session, dayNumber: 1, hour: 14 }, at("2026-09-25T14:01:00Z"))).toBe(false);
   });
 
-  it("never exceeds the session's length", () => {
-    expect(unlockedDayCount("2026-09-24", 5, "UTC", at("2026-10-24T09:00:00Z"))).toBe(5);
+  it("lets yesterday afternoon stay open while this morning's early hours have closed", () => {
+    // Now: Friday 3 PM. Thursday 4 PM is 23 hours ago; Thursday 2 PM is 25.
+    const now = at("2026-09-25T15:00:00Z");
+    expect(isHourOpen({ ...session, dayNumber: 1, hour: 16 }, now)).toBe(true);
+    expect(isHourOpen({ ...session, dayNumber: 1, hour: 14 }, now)).toBe(false);
   });
 
-  it("keeps day 1 open when the start date is still in the future", () => {
-    expect(unlockedDayCount("2026-09-24", 7, "UTC", at("2026-09-20T09:00:00Z"))).toBe(1);
+  it("follows the client's own clock", () => {
+    // 23:00 UTC on the 25th is 7 PM in Toronto (22 hours after their 9 PM on
+    // the 24th, so still open) and 8 AM on the 26th in Tokyo (35 hours, shut).
+    const now = at("2026-09-25T23:00:00Z");
+    expect(isHourOpen({ ...session, timezone: "America/Toronto", dayNumber: 1, hour: 21 }, now)).toBe(true);
+    expect(isHourOpen({ ...session, timezone: "Asia/Tokyo", dayNumber: 1, hour: 21 }, now)).toBe(false);
   });
 
-  it("follows the client's midnight, not the server's", () => {
-    // 03:00 UTC on the 25th is still the 24th in Toronto, so day 2 hasn't
-    // opened for a client there.
-    const justAfterUtcMidnight = at("2026-09-25T03:00:00Z");
-    expect(unlockedDayCount("2026-09-24", 7, "UTC", justAfterUtcMidnight)).toBe(2);
-    expect(unlockedDayCount("2026-09-24", 7, "America/Toronto", justAfterUtcMidnight)).toBe(1);
+  it("puts an after-midnight slot on the following date", () => {
+    // Wake 7 AM, bedtime 1 AM: the midnight slot of day 1 is the 25th.
+    expect(isHourOpen({ ...session, dayNumber: 1, hour: 0 }, at("2026-09-24T23:00:00Z"))).toBe(false);
+    expect(isHourOpen({ ...session, dayNumber: 1, hour: 0 }, at("2026-09-25T00:30:00Z"))).toBe(true);
+  });
+
+  it("reports how long is left", () => {
+    expect(minutesLeft({ ...session, dayNumber: 1, hour: 14 }, at("2026-09-24T14:00:00Z"))).toBe(24 * 60);
+    expect(minutesLeft({ ...session, dayNumber: 1, hour: 14 }, at("2026-09-25T12:00:00Z"))).toBe(120);
+    expect(minutesLeft({ ...session, dayNumber: 1, hour: 14 }, at("2026-09-26T12:00:00Z"))).toBe(0);
+  });
+});
+
+describe("dayHasStarted / currentDay", () => {
+  const session = { startDate: "2026-09-24", wakeHour: 7, timezone: "UTC", dayCount: 7 };
+  const at = (iso: string) => new Date(iso);
+
+  it("a day starts at its first waking hour", () => {
+    expect(dayHasStarted({ ...session, dayNumber: 1 }, at("2026-09-24T06:59:00Z"))).toBe(false);
+    expect(dayHasStarted({ ...session, dayNumber: 1 }, at("2026-09-24T07:00:00Z"))).toBe(true);
+    expect(dayHasStarted({ ...session, dayNumber: 3 }, at("2026-09-25T09:00:00Z"))).toBe(false);
+  });
+
+  it("the current day is the latest one that has started", () => {
+    expect(currentDay(session, at("2026-09-24T09:00:00Z"))).toBe(1);
+    expect(currentDay(session, at("2026-09-27T09:00:00Z"))).toBe(4);
+    expect(currentDay(session, at("2026-09-27T03:00:00Z"))).toBe(3); // before waking
+    expect(currentDay(session, at("2026-10-30T09:00:00Z"))).toBe(7); // never past the end
+    expect(currentDay(session, at("2026-09-01T09:00:00Z"))).toBe(1); // before it begins
   });
 });
 

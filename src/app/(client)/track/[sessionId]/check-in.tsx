@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { FieldLabel, PageBody, PageHero, SectionLabel, Surface } from "@/components/AppShell";
+import { dayHasStarted, isHourOpen } from "@/lib/days";
 import { useSaveQueue } from "@/hooks/useSaveQueue";
 import { SCALE, scaleOf } from "@/lib/charge";
 import {
@@ -26,12 +27,12 @@ type Props = {
   initialDay: number;
   /** Calendar date per day, "Mon, Sep 21", from the session's start date. */
   dayDates: string[];
-  /**
-   * How many days are open. A day opens on its own date, so nobody can fill
-   * in a whole week in one sitting (Jen, 2026-09-24). The database enforces
-   * the same rule — this only keeps the UI honest about it.
-   */
-  unlockedDays: number;
+  /** Session start, "YYYY-MM-DD" — with wakeHour it dates every slot. */
+  startDate: string;
+  wakeHour: number;
+  timezone: string | null;
+  /** The day they're on, which is where the screen and the strip open. */
+  currentDay: number;
 };
 
 type NoteField = "feel" | "unexpected" | "forJen";
@@ -52,7 +53,10 @@ export function CheckIn({
   initialDays,
   initialDay,
   dayDates,
-  unlockedDays,
+  startDate,
+  wakeHour,
+  timezone,
+  currentDay,
 }: Props) {
   const supabase = useMemo(() => createClient(), []);
   const { status, enqueue, retry } = useSaveQueue();
@@ -60,20 +64,31 @@ export function CheckIn({
   const [days, setDays] = useState<DayLog[]>(initialDays);
   const [day, setDay] = useState(initialDay);
   const [openHour, setOpenHour] = useState<number | null>(null);
+  // The window moves while the page is open; a minute's granularity is plenty.
+  const [clock, setClock] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setClock(new Date()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
   const [finishing, startFinishing] = useTransition();
   const tabStrip = useRef<HTMLDivElement>(null);
 
-  // Keep the active day's tab visible. On a 6–7 day session the later tabs
-  // start off-screen on a phone, so day 7 would otherwise open with its own
-  // tab hidden. Adjusts only the strip's scroll, never the page's.
+  // Centre the active day's tab in the strip. On a phone with 6–7 days the
+  // later tabs start off-screen, and Jen's clients were scrolling to find the
+  // day they were on (2026-09-29). Runs after layout so the measurements are
+  // real, and only ever scrolls the strip, never the page.
   useEffect(() => {
-    const strip = tabStrip.current;
-    const tab = strip?.querySelector<HTMLElement>('[aria-current="step"]');
-    if (!strip || !tab) return;
-    const left = tab.offsetLeft; // the strip is position: relative, so this is strip-relative
-    const right = left + tab.offsetWidth;
-    if (left < strip.scrollLeft) strip.scrollTo({ left: left - 18 });
-    else if (right > strip.scrollLeft + strip.clientWidth) strip.scrollTo({ left: right - strip.clientWidth + 18 });
+    const centre = () => {
+      const strip = tabStrip.current;
+      const tab = strip?.querySelector<HTMLElement>('[aria-current="step"]');
+      if (!strip || !tab) return;
+      // The strip is position: relative, so offsetLeft is strip-relative.
+      const target = tab.offsetLeft - (strip.clientWidth - tab.offsetWidth) / 2;
+      const max = strip.scrollWidth - strip.clientWidth;
+      strip.scrollTo({ left: Math.max(0, Math.min(target, max)), behavior: "smooth" });
+    };
+    const frame = requestAnimationFrame(centre);
+    return () => cancelAnimationFrame(frame);
   }, [day]);
 
   // Latest notes, read by the debounced writer so it never sends stale text.
@@ -86,14 +101,21 @@ export function CheckIn({
   const current = days[day] ?? emptyDay();
   const slotCount = hours.length;
   const dayNumber = day + 1;
-  const locked = dayNumber > unlockedDays;
-  /** True when there is a next day but it hasn't arrived yet. */
-  const nextLocked = day + 1 < dayCount && day + 2 > unlockedDays;
+  // A day the client hasn't reached yet — nothing to log, so the grid is
+  // replaced by "opens on…".
+  const started = (n: number) => dayHasStarted({ startDate, dayNumber: n, wakeHour, timezone }, clock);
+  const locked = !started(dayNumber);
+  const nextLocked = day + 1 < dayCount && !started(day + 2);
+  // Jen's 24-hour window, hour by hour (2026-09-29). Recomputed on a timer so
+  // an hour closes while the screen is open rather than on the next reload.
+  const hourOpen = (hour: number, n = dayNumber) =>
+    isHourOpen({ startDate, dayNumber: n, hour, wakeHour, timezone }, clock);
+  const closedCount = hours.filter((h) => !hourOpen(h) && current.slots[h] === undefined).length;
 
   // ── writes ──────────────────────────────────────────────────────────────
 
   const pickTile = (hour: number, value: number) => {
-    if (locked) return;
+    if (locked || !hourOpen(hour)) return;
     const previous = current.slots[hour];
     // Tapping the level that's already selected clears the hour. The
     // prototype had no way to undo a mis-tap, and a mis-tapped hour would
@@ -191,7 +213,7 @@ export function CheckIn({
   }, [flushNotes]);
 
   const goToDay = (next: number) => {
-    if (next + 1 > unlockedDays) return;
+    if (!started(next + 1)) return;
     flushNotes(day);
     setDay(next);
     setOpenHour(null);
@@ -213,7 +235,7 @@ export function CheckIn({
     const n = loggedCount(d);
     const done = isComplete(d, slotCount);
     const active = i === day;
-    const shut = i + 1 > unlockedDays;
+    const shut = !started(i + 1);
     if (layout === "chip") {
       return (
         <button
@@ -370,25 +392,31 @@ export function CheckIn({
                 </div>
                 <h2 className="font-serif text-[24px] font-semibold text-navy">Day {dayNumber} opens {dayDates[day]}</h2>
                 <p className="mx-auto mt-3 max-w-md text-[14px] leading-[1.7] text-body">
-                  Your Charge Index measures real days as you live them, so each day unlocks on its own date. Come back
-                  tomorrow — and if you missed an earlier day, you can still fill it in.
+                  Your Charge Index measures real days as you live them, so a day opens when it begins. Each hour then
+                  stays open for 24 hours — long enough to catch up tonight, short enough that you&rsquo;re remembering
+                  rather than guessing.
                 </p>
-                {unlockedDays > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => goToDay(unlockedDays - 1)}
-                    className="mt-6 inline-flex min-h-12 items-center rounded-2xl bg-navy px-6 text-[14px] font-extrabold text-white transition hover:-translate-y-0.5"
-                  >
-                    Go to day {unlockedDays}
-                  </button>
-                ) : null}
+                <button
+                  type="button"
+                  onClick={() => goToDay(currentDay - 1)}
+                  className="mt-6 inline-flex min-h-12 items-center rounded-2xl bg-navy px-6 text-[14px] font-extrabold text-white transition hover:-translate-y-0.5"
+                >
+                  Go to day {currentDay}
+                </button>
               </Surface>
             ) : null}
 
             {/* The grid */}
             <Surface className={`px-3 pt-5 pb-4 sm:px-6 sm:pt-6 ${locked ? "hidden" : ""}`} accent="spectrum" delay={60}>
               <div className="mb-4 flex items-center justify-between gap-3 px-1">
-                <h2 className="font-serif text-[22px] font-semibold text-navy">One tap an hour</h2>
+                <div>
+                  <h2 className="font-serif text-[22px] font-semibold text-navy">One tap an hour</h2>
+                  {closedCount ? (
+                    <p className="mt-0.5 text-[11.5px] font-bold text-muted">
+                      {closedCount} {closedCount === 1 ? "hour has" : "hours have"} closed — each stays open for 24 hours.
+                    </p>
+                  ) : null}
+                </div>
                 <div className="flex items-center gap-2 text-[12px] font-extrabold text-muted">
                   <span className="relative h-2 w-20 overflow-hidden rounded-full bg-cream" aria-hidden>
                     <span className="spectrum absolute inset-y-0 left-0 rounded-full transition-[width] duration-500" style={{ width: `${dayPct}%` }} />
@@ -412,15 +440,22 @@ export function CheckIn({
                 {hours.map((hour) => {
                   const selected = current.slots[hour];
                   const selectedScale = selected !== undefined ? scaleOf(selected) : null;
+                  // Open from the moment the hour starts until 24 hours later.
+                  const open = hourOpen(hour);
                   return (
-                    <div key={hour}>
+                    <div key={hour} className={open ? undefined : "opacity-55"}>
                       <div
                         className="grid grid-cols-[58px_1fr] items-center py-[3px] sm:grid-cols-[72px_1fr]"
                         role="radiogroup"
-                        aria-label={`${formatHour(hour)} charge level`}
+                        aria-label={`${formatHour(hour)} charge level${open ? "" : " — closed"}`}
                       >
                         <div className={`text-[12.5px] font-extrabold whitespace-nowrap sm:text-[13.5px] ${selectedScale ? "text-navy" : "text-body"}`}>
                           {formatHour(hour)}
+                          {!open ? (
+                            <span className="block text-[9.5px] leading-tight font-bold text-muted">
+                              {selectedScale ? "locked" : "closed"}
+                            </span>
+                          ) : null}
                         </div>
                         <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
                           {SCALE.map((s) => {
@@ -434,8 +469,9 @@ export function CheckIn({
                                 aria-label={`${s.label} ${s.short}`}
                                 title={`${s.label} ${s.short}`}
                                 onClick={() => pickTile(hour, s.value)}
+                                disabled={!open}
                                 className={`relative flex h-12 items-center justify-center overflow-hidden rounded-xl text-[11.5px] font-extrabold transition duration-200 sm:h-[52px] sm:text-[12.5px] ${
-                                  isSelected ? "animate-pop" : "hover:-translate-y-0.5 hover:brightness-95"
+                                  !open ? "cursor-not-allowed" : isSelected ? "animate-pop" : "hover:-translate-y-0.5 hover:brightness-95"
                                 }`}
                                 style={{
                                   background: s.tint,
