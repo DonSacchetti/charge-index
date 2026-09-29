@@ -8,7 +8,7 @@ import { loadSessionAnalysis } from "@/lib/session-data";
 import { formatDayDate } from "@/lib/days";
 import { hourOf } from "@/lib/slots";
 import { canViewPeakPlan, requireViewer } from "@/lib/viewer";
-import { formatWindow } from "@/lib/weekly-map";
+import { formatRanges } from "@/lib/weekly-map";
 
 export const metadata = { title: "The Peak Plan™ | Soenen Strategies" };
 
@@ -99,7 +99,7 @@ export default async function PeakPlanPage({ params }: PageProps<"/plan/[session
                 <div className="mb-2 text-[9.5px] font-extrabold tracking-[0.13em] uppercase" style={{ color: w.color }}>
                   {w.label}
                 </div>
-                <div className="font-serif text-[21px] leading-[1.25] font-semibold text-ink">{formatWindow(windows[w.band])}</div>
+                <div className="font-serif text-[21px] leading-[1.25] font-semibold text-ink">{formatRanges(windows[w.band])}</div>
                 <p className="mt-2 text-[12px] leading-[1.6] text-body">{w.desc}</p>
               </div>
             ))}

@@ -7,11 +7,13 @@ import {
   computeWeeklyMap,
   findWindows,
   formatWindow,
-  isFlatTop,
+  flatDayLevels,
+  hasRepeatedFlatRun,
   longestRun,
   formatHours,
   topHours,
-  topLevelShare,
+  formatRanges,
+  qualifyingHours,
   BANDS,
 } from "@/lib/weekly-map";
 
@@ -104,8 +106,11 @@ describe("findWindows", () => {
     ]);
     expect(findWindows(map)).toEqual({
       peak: [9, 10, 11],
-      collaboration: [12, 13],
-      recovery: [15, 16, 17],
+      // 8 AM at 75% qualifies too, and is no longer dropped for sitting
+      // outside the longest run (Jen, 2026-09-29).
+      collaboration: [8, 12, 13],
+      // 6 AM at 25% is a recovery hour as much as the evening dip is.
+      recovery: [6, 15, 16, 17],
     });
   });
 });
@@ -156,36 +161,6 @@ describe("topHours", () => {
   });
 });
 
-describe("isFlatTop", () => {
-  const entries = (count: number, pct: number, hourFrom = 0) =>
-    Array.from({ length: count }, (_, i) => ({ dayNumber: 1, hour: hourFrom + i, pct }));
-
-  it("flags a client logging 100% for at least 80% of their hours", () => {
-    expect(isFlatTop([...entries(36, 100)])).toBe(true);
-    expect(topLevelShare([...entries(36, 100)])).toBe(1);
-  });
-
-  it("does not flag a varied session", () => {
-    expect(isFlatTop([...entries(20, 100), ...entries(20, 50, 20)])).toBe(false);
-  });
-
-  it("needs enough hours before it means anything", () => {
-    // All 100%, but only 20 hours — too little to call.
-    expect(isFlatTop(entries(20, 100))).toBe(false);
-  });
-
-  it("is a share, not a count: 80% of hours at the top flags", () => {
-    expect(topLevelShare([...entries(32, 100), ...entries(8, 50, 32)])).toBe(0.8);
-    expect(isFlatTop([...entries(32, 100), ...entries(8, 50, 32)])).toBe(true);
-    expect(isFlatTop([...entries(31, 100), ...entries(9, 50, 31)])).toBe(false);
-  });
-
-  it("treats an empty session as not flagged", () => {
-    expect(topLevelShare([])).toBe(0);
-    expect(isFlatTop([])).toBe(false);
-  });
-});
-
 describe("formatHours", () => {
   it("reads as a range when the hours are consecutive", () => {
     expect(formatHours([9, 10])).toBe("9 AM – 11 AM");
@@ -202,5 +177,96 @@ describe("formatHours", () => {
   it("handles one hour and none", () => {
     expect(formatHours([14])).toBe("2 PM – 3 PM");
     expect(formatHours([])).toBe("—");
+  });
+});
+
+describe("findWindows — bands as Jen defines them (2026-09-29)", () => {
+  const map = (pairs: [number, number | null][]) =>
+    pairs.map(([hour, avgPct]) => ({ hour, avgPct, daysAnswered: 5 }));
+
+  it("keeps peak hours that sit in different parts of the day", () => {
+    const windows = findWindows(map([[9, 95], [10, 92], [11, 40], [12, 50], [15, 97]]));
+    expect(windows.peak).toEqual([9, 10, 15]);
+    expect(formatRanges(windows.peak)).toBe("9 AM – 11 AM and 3 PM – 4 PM");
+  });
+
+  it("no longer throws away the shorter stretch", () => {
+    // The old rule returned only [9, 10] — the longest unbroken run.
+    expect(findWindows(map([[9, 95], [10, 95], [11, 20], [15, 99]])).peak).toEqual([9, 10, 15]);
+  });
+
+  it("caps collaboration at four hours, keeping the strongest", () => {
+    const windows = findWindows(map([[8, 63], [9, 70], [10, 88], [11, 80], [12, 75], [13, 65]]));
+    expect(windows.collaboration).toHaveLength(4);
+    expect(windows.collaboration).toEqual([9, 10, 11, 12]); // 63 and 65 drop out
+  });
+
+  it("leaves collaboration alone when four or fewer hours qualify", () => {
+    expect(findWindows(map([[9, 70], [10, 80]])).collaboration).toEqual([9, 10]);
+  });
+
+  it("takes every recovery hour, scattered or not", () => {
+    expect(findWindows(map([[7, 20], [8, 90], [21, 30], [22, 10]])).recovery).toEqual([7, 21, 22]);
+  });
+
+  it("ignores hours with no data", () => {
+    expect(qualifyingHours(map([[9, null], [10, 95]]), (v) => v >= 90)).toEqual([10]);
+  });
+});
+
+describe("formatRanges", () => {
+  it("joins separate stretches", () => {
+    expect(formatRanges([9, 10, 15])).toBe("9 AM – 11 AM and 3 PM – 4 PM");
+    expect(formatRanges([9, 12, 15])).toBe("9 AM – 10 AM, 12 PM – 1 PM and 3 PM – 4 PM");
+  });
+
+  it("reads as one range when the hours are consecutive, including past midnight", () => {
+    expect(formatRanges([9, 10, 11])).toBe("9 AM – 12 PM");
+    expect(formatRanges([23, 0])).toBe("11 PM – 1 AM");
+  });
+
+  it("shows an em dash when there's nothing", () => {
+    expect(formatRanges([])).toBe("—");
+  });
+});
+
+describe("hasRepeatedFlatRun", () => {
+  const hours = [7, 8, 9, 10, 11, 12, 13];
+  const day = (dayNumber: number, pcts: (number | null)[]) =>
+    pcts.flatMap((pct, i) => (pct === null ? [] : [{ dayNumber, hour: hours[i], pct }]));
+
+  it("flags five straight hours at one level on two days running", () => {
+    const entries = [...day(1, [100, 100, 100, 100, 100, 25, 50]), ...day(2, [50, 100, 100, 100, 100, 100, 25])];
+    expect(hasRepeatedFlatRun(entries, hours)).toBe(true);
+  });
+
+  it("needs the same level on both days", () => {
+    const entries = [...day(1, [100, 100, 100, 100, 100, 25, 50]), ...day(2, [50, 50, 50, 50, 50, 100, 25])];
+    expect(hasRepeatedFlatRun(entries, hours)).toBe(false);
+  });
+
+  it("needs the days to be consecutive", () => {
+    const entries = [...day(1, [75, 75, 75, 75, 75, 25, 50]), ...day(3, [75, 75, 75, 75, 75, 25, 50])];
+    expect(hasRepeatedFlatRun(entries, hours)).toBe(false);
+  });
+
+  it("needs five in a row, not five in the day", () => {
+    const entries = [...day(1, [100, 100, 25, 100, 100, 100, 50]), ...day(2, [100, 100, 25, 100, 100, 100, 50])];
+    expect(hasRepeatedFlatRun(entries, hours)).toBe(false);
+  });
+
+  it("treats a skipped hour as breaking the run", () => {
+    const entries = [...day(1, [100, 100, null, 100, 100, 100, 100]), ...day(2, [100, 100, null, 100, 100, 100, 100])];
+    expect(hasRepeatedFlatRun(entries, hours)).toBe(false);
+  });
+
+  it("records every level a day runs flat on", () => {
+    const entries = day(1, [100, 100, 100, 100, 100, 50, 50]);
+    expect(flatDayLevels(entries, hours).get(1)).toEqual(new Set([100]));
+    expect(hasRepeatedFlatRun(entries, hours)).toBe(false); // one day only
+  });
+
+  it("is quiet on an empty session", () => {
+    expect(hasRepeatedFlatRun([], hours)).toBe(false);
   });
 });

@@ -21,26 +21,26 @@ describe("buildRoster", () => {
     expect(amy.latest?.id).toBe("a2");
   });
 
-  it("sums logged hours across a client's sessions, and flags the flat-100% ones", () => {
+  it("sums logged hours across a client's sessions, and flags the repeated flat runs", () => {
     const flagged = buildRoster(
       [profile("amy", "Amy"), profile("ben", "Ben")],
       [session("a1", "amy", "2026-03-01"), session("a2", "amy", "2026-09-01"), session("b1", "ben", "2026-06-01")],
       [],
       [
-        // Amy: 40 hours, 36 of them at 100% — over the 80% share, over the floor.
-        { client_id: "amy", hours_logged: 20, top_hours: 18 },
-        { client_id: "amy", hours_logged: 20, top_hours: 18 },
-        // Ben: all 100%, but only 20 hours — too little to call.
-        { client_id: "ben", hours_logged: 20, top_hours: 20 },
+        // Amy: one of her sessions tripped the flat-run rule.
+        { client_id: "amy", hours_logged: 20, flat_run: true },
+        { client_id: "amy", hours_logged: 20, flat_run: true },
+        // Ben: nothing flagged.
+        { client_id: "ben", hours_logged: 20, flat_run: false },
       ],
     );
-    expect(flagged.find((c) => c.id === "amy")).toMatchObject({ hoursLogged: 40, flatTop: true });
-    expect(flagged.find((c) => c.id === "ben")).toMatchObject({ hoursLogged: 20, flatTop: false });
+    expect(flagged.find((c) => c.id === "amy")).toMatchObject({ hoursLogged: 40, flatRun: true });
+    expect(flagged.find((c) => c.id === "ben")).toMatchObject({ hoursLogged: 20, flatRun: false });
   });
 
   it("reports no hours and no flag for a client with no entries", () => {
     const amy = roster.find((c) => c.id === "amy")!;
-    expect(amy).toMatchObject({ hoursLogged: 0, flatTop: false });
+    expect(amy).toMatchObject({ hoursLogged: 0, flatRun: false });
   });
 
   it("puts the most recent activity first, clients with no sessions last by name", () => {

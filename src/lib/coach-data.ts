@@ -7,41 +7,47 @@ import type { Database } from "@/lib/database.types";
 import { fetchAll } from "@/lib/fetch-all";
 import type { SummaryRow } from "@/lib/roster";
 import { analyseSession } from "@/lib/session-data";
+import { buildSessionSlots, hourOf } from "@/lib/slots";
+import { hasRepeatedFlatRun } from "@/lib/weekly-map";
 
 type Db = SupabaseClient<Database>;
 
 /** Everything the roster needs, read in pages past the 1,000-row cap. */
 export async function loadRosterData(supabase: Db) {
-  const [profiles, sessions, notes, entryStats] = await Promise.all([
+  const [profiles, sessions, notes, entries] = await Promise.all([
     fetchAll((from, to) =>
       supabase.from("profiles").select("id, full_name, email, created_at, role").order("id").range(from, to),
     ),
     fetchAll((from, to) =>
       supabase
         .from("tracking_sessions")
-        .select("id, client_id, label, status, start_date, created_at, day_count")
+        .select("id, client_id, label, status, start_date, created_at, day_count, wake_time, sleep_time")
         .order("id")
         .range(from, to),
     ),
     fetchAll((from, to) => supabase.from("coach_notes").select("client_id").order("id").range(from, to)),
     fetchAll((from, to) =>
-      supabase
-        .from("session_entry_stats")
-        .select("client_id, hours_logged, top_hours")
-        .order("session_id")
-        .range(from, to),
+      supabase.from("daily_entries").select("session_id, day_number, slot_hour, energy_pct").order("id").range(from, to),
     ),
   ]);
   return {
     profiles,
     sessions,
     noteClientIds: notes.map((n) => n.client_id),
-    // The view's columns are nullable to Postgres; a row always has them.
-    entryStats: entryStats.map((r) => ({
-      client_id: r.client_id ?? "",
-      hours_logged: r.hours_logged ?? 0,
-      top_hours: r.top_hours ?? 0,
-    })),
+    // Jen's flag needs the shape of each day, not just counts, so the roster
+    // reads the entries themselves and runs the same rule the session pages do.
+    entryStats: sessions.map((session) => {
+      const own = entries.filter((e) => e.session_id === session.id);
+      const hours = buildSessionSlots(hourOf(session.wake_time), hourOf(session.sleep_time)).map(hourOf);
+      return {
+        client_id: session.client_id,
+        hours_logged: own.length,
+        flat_run: hasRepeatedFlatRun(
+          own.map((e) => ({ dayNumber: e.day_number, hour: hourOf(e.slot_hour), pct: e.energy_pct })),
+          hours,
+        ),
+      };
+    }),
   };
 }
 

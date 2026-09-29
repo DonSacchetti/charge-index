@@ -14,7 +14,7 @@ describe("planGuards", () => {
   it("writes all three guards when every window exists", () => {
     const g = planGuards({ peak: [9, 10], collaboration: [13], recovery: [15, 16] });
     expect(g.map((x) => x.n)).toEqual(["01", "02", "03"]);
-    expect(g[0].text).toBe("Nothing books over 9 AM – 11 AM. That block belongs to the work only you can do.");
+    expect(g[0].text).toBe("Nothing books over 9 AM – 11 AM. Those hours belong to the work only you can do.");
     expect(g[2].text).toContain("Plan the dip at 3 PM – 5 PM");
   });
 
@@ -78,7 +78,7 @@ describe("buildPeakPlanIcs", () => {
     const encoder = new TextEncoder();
     expect(physical.every((l) => encoder.encode(l).length <= 75)).toBe(true);
     const unfolded = ics.replace(/\r\n /g, "");
-    expect(unfolded).toContain("DESCRIPTION:Your fully-charged window (9 AM – 11 AM). Deep work only. Source: your Charge Index.");
+    expect(unfolded).toContain("DESCRIPTION:Your fully-charged hours (9 AM – 11 AM). Deep work only. Source: your Charge Index.");
   });
 });
 
@@ -148,5 +148,31 @@ describe("escapeIcsText", () => {
     expect(escapeIcsText("a\\b")).toBe("a\\\\b");
     expect(escapeIcsText("a\nb")).toBe("a\\nb");
     expect(escapeIcsText("a\r\nb")).toBe("a\\nb");
+  });
+});
+
+describe("buildPeakPlanIcs — peak hours in two parts of the day", () => {
+  const now = new Date("2026-09-16T14:30:00Z"); // a Wednesday
+
+  it("writes one block per unbroken stretch, never booking the slump between", () => {
+    const ics = buildPeakPlanIcs({ peak: [9, 10, 15], sessionId: "s", now })!.replace(/\r\n /g, "");
+    expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(2);
+    expect(ics).toContain("DTSTART:20260916T090000");
+    expect(ics).toContain("DTEND:20260916T110000");
+    expect(ics).toContain("DTSTART:20260916T150000");
+    expect(ics).toContain("DTEND:20260916T160000");
+    expect(ics).not.toContain("DTEND:20260916T160000\r\nDTSTART:20260916T090000");
+  });
+
+  it("gives each block its own UID", () => {
+    const ics = buildPeakPlanIcs({ peak: [9, 15], sessionId: "s", now })!;
+    expect(ics).toContain("UID:peak-plan-s@charge-index");
+    expect(ics).toContain("UID:peak-plan-s-1@charge-index");
+  });
+
+  it("still writes a single event for one unbroken stretch", () => {
+    const ics = buildPeakPlanIcs({ peak: [9, 10, 11], sessionId: "s", now })!;
+    expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(1);
+    expect(ics).toContain("DTEND:20260916T120000");
   });
 });

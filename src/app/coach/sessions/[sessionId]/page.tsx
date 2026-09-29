@@ -14,7 +14,7 @@ import { PLAN_WINDOWS } from "@/lib/peak-plan";
 import { loadSessionAnalysis } from "@/lib/session-data";
 import { formatHour } from "@/lib/slots";
 import { requireCoach } from "@/lib/viewer";
-import { formatWindow } from "@/lib/weekly-map";
+import { formatRanges } from "@/lib/weekly-map";
 
 export default async function CoachSessionPage({
   params,
@@ -70,7 +70,7 @@ export default async function CoachSessionPage({
           </h1>
           <p className="mt-[7px] max-w-[560px] text-[13.5px] leading-[1.6] text-white/75">
             {hasData
-              ? `${session.day_count} days, ${entries.length} logged hours. Peak window ${formatWindow(windows.peak)}. This is the analysis layer the client never sees.`
+              ? `${session.day_count} days, ${entries.length} logged hours. Peak window ${formatRanges(windows.peak)}. This is the analysis layer the client never sees.`
               : "Nothing logged yet. The analysis fills in as the client logs their hours."}
           </p>
         </div>
@@ -113,7 +113,7 @@ export default async function CoachSessionPage({
               {w.label}
             </div>
             <div className="font-serif text-[21px] leading-[1.25] font-semibold text-ink">
-              {formatWindow(windows[w.band])}
+              {formatRanges(windows[w.band])}
             </div>
             <p className="mt-2 text-[12px] leading-[1.6] text-body">{w.desc}</p>
           </div>
@@ -173,9 +173,9 @@ export default async function CoachSessionPage({
                       <span className="ml-2 text-muted">{c.session.start_date}</span>
                     </td>
                     <td className="py-2 pr-3 text-body">{c.entries.length}</td>
-                    <td className="py-2 pr-3 text-body">{formatWindow(c.windows.peak)}</td>
-                    <td className="py-2 pr-3 text-body">{formatWindow(c.windows.collaboration)}</td>
-                    <td className="py-2 text-body">{formatWindow(c.windows.recovery)}</td>
+                    <td className="py-2 pr-3 text-body">{formatRanges(c.windows.peak)}</td>
+                    <td className="py-2 pr-3 text-body">{formatRanges(c.windows.collaboration)}</td>
+                    <td className="py-2 text-body">{formatRanges(c.windows.recovery)}</td>
                   </tr>
                 ))}
               </tbody>

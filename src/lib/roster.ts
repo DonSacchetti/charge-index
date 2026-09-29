@@ -5,7 +5,7 @@
 
 import { csvCell } from "@/lib/peak-plan";
 import { formatHour } from "@/lib/slots";
-import { formatWindow, isFlatTopCounts, type Windows } from "@/lib/weekly-map";
+import { formatRanges, type Windows } from "@/lib/weekly-map";
 
 export type RosterProfile = {
   id: string;
@@ -15,8 +15,13 @@ export type RosterProfile = {
   role: "client" | "coach" | "admin";
 };
 
-/** Per-session counts from the session_entry_stats view. */
-export type EntryStat = { client_id: string; hours_logged: number; top_hours: number };
+/** What the roster needs about one session's entries, computed in coach-data. */
+export type EntryStat = {
+  client_id: string;
+  hours_logged: number;
+  /** Five hours in a row at one level, two days running (Jen, 2026-09-29). */
+  flat_run: boolean;
+};
 
 export type RosterSession = {
   id: string;
@@ -40,11 +45,11 @@ export type RosterClient = {
   noteCount: number;
   hoursLogged: number;
   /**
-   * Logging 100% for almost every hour. Jen asked to see this on the roster
-   * (2026-09-24): it usually means the person is reading energy rather than
-   * brain activity, which is a coaching call, not a scheduling fix.
+   * Two days running with five straight hours on one level — Jen's flag
+   * (2026-09-29). It means the person is tapping down the column rather than
+   * reading their day, which is a phone call, not a scheduling fix.
    */
-  flatTop: boolean;
+  flatRun: boolean;
 };
 
 /**
@@ -61,13 +66,13 @@ export function buildRoster(
   noteClientIds: string[],
   entryStats: EntryStat[] = [],
 ): RosterClient[] {
-  // Across every session a client has logged — the flag is about the person's
-  // reading of their own energy, not one week of it.
-  const logged = new Map<string, { hours: number; top: number }>();
+  // Across every session a client has logged — one flagged session is enough
+  // to flag the client.
+  const logged = new Map<string, { hours: number; flagged: boolean }>();
   for (const stat of entryStats) {
-    const acc = logged.get(stat.client_id) ?? { hours: 0, top: 0 };
+    const acc = logged.get(stat.client_id) ?? { hours: 0, flagged: false };
     acc.hours += stat.hours_logged;
-    acc.top += stat.top_hours;
+    acc.flagged = acc.flagged || stat.flat_run;
     logged.set(stat.client_id, acc);
   }
 
@@ -86,7 +91,7 @@ export function buildRoster(
     .filter((p) => p.role === "client" || byClient.has(p.id))
     .map((p) => {
       const own = (byClient.get(p.id) ?? []).sort(newest);
-      const hours = logged.get(p.id) ?? { hours: 0, top: 0 };
+      const hours = logged.get(p.id) ?? { hours: 0, flagged: false };
       return {
         id: p.id,
         name: p.full_name?.trim() || "Unnamed client",
@@ -98,7 +103,7 @@ export function buildRoster(
         latest: own[0] ?? null,
         noteCount: notes.get(p.id) ?? 0,
         hoursLogged: hours.hours,
-        flatTop: isFlatTopCounts(hours.hours, hours.top),
+        flatRun: hours.flagged,
       };
     })
     .sort((a, b) => {
@@ -145,7 +150,7 @@ export function buildSummaryCsv(rows: SummaryRow[]): string {
     r.clientName, r.clientEmail, r.label, r.status === "completed" ? "Complete" : "In progress",
     r.startDate, r.dayCount, `${formatHour(r.wake)} – ${formatHour(r.sleep)}`,
     r.hoursLogged, `${r.coveragePct}%`, r.completeDays,
-    formatWindow(r.windows.peak), formatWindow(r.windows.collaboration), formatWindow(r.windows.recovery),
+    formatRanges(r.windows.peak), formatRanges(r.windows.collaboration), formatRanges(r.windows.recovery),
   ])];
   return "﻿" + lines.map((l) => l.map(csvCell).join(",")).join("\r\n") + "\r\n";
 }

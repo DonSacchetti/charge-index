@@ -75,21 +75,78 @@ export function longestRun(map: HourAverage[], test: (v: number) => boolean): nu
   return current.length > best.length ? current : best;
 }
 
+/** Collaboration is a working cap, not a measurement (Jen, 2026-09-29). */
+export const MAX_COLLABORATION_HOURS = 4;
+
+/** Every hour whose average passes `test`, in slot order. */
+export function qualifyingHours(map: HourAverage[], test: (v: number) => boolean): number[] {
+  return map.filter((m) => m.avgPct !== null && test(m.avgPct)).map((m) => m.hour);
+}
+
+/**
+ * The bands as Jen described them on 2026-09-29, replacing "longest unbroken
+ * run": a person's peak hours are simply the hours that qualify, wherever
+ * they fall. Someone sharp at 9 AM and again at 3 PM has two peak stretches,
+ * and calling only the longer one their peak threw the other away.
+ *
+ * Collaboration keeps at most four hours — her cap on how long a
+ * collaboration block should run. When more hours qualify, the strongest four
+ * are kept, which can leave two shorter stretches rather than one block.
+ */
 export function findWindows(map: HourAverage[]): Windows {
+  const collaboration = qualifyingHours(map, BANDS.collaboration);
   return {
-    peak: longestRun(map, BANDS.peak),
-    collaboration: longestRun(map, BANDS.collaboration),
-    recovery: longestRun(map, BANDS.recovery),
+    peak: qualifyingHours(map, BANDS.peak),
+    collaboration: capHours(map, collaboration, MAX_COLLABORATION_HOURS),
+    recovery: qualifyingHours(map, BANDS.recovery),
   };
+}
+
+/** Keeps the `limit` strongest of `hours`, back in slot order. */
+export function capHours(map: HourAverage[], hours: number[], limit: number): number[] {
+  if (hours.length <= limit) return hours;
+  const order = new Map(map.map((m, i) => [m.hour, i]));
+  const avg = new Map(map.map((m) => [m.hour, m.avgPct ?? 0]));
+  return [...hours]
+    .sort((a, b) => avg.get(b)! - avg.get(a)! || order.get(a)! - order.get(b)!)
+    .slice(0, limit)
+    .sort((a, b) => order.get(a)! - order.get(b)!);
 }
 
 /**
  * "10 AM – 12 PM" for a run of [10, 11] — the end is when the last hour
  * finishes. "—" when there's no run, matching the prototype's sparse state.
+ *
+ * Takes the whole set as ONE span, so it's only right for consecutive hours.
+ * Since bands can now be scattered across the day, most callers want
+ * formatRanges().
  */
 export function formatWindow(run: number[]): string {
   if (run.length === 0) return "—";
   return `${formatHour(run[0])} – ${formatHour((run[run.length - 1] + 1) % 24)}`;
+}
+
+/** Consecutive hours grouped into runs: [9,10,15] → [[9,10],[15]]. */
+export function hourRuns(hours: number[]): number[][] {
+  const runs: number[][] = [];
+  for (const hour of hours) {
+    const last = runs[runs.length - 1];
+    if (last && hour === (last[last.length - 1] + 1) % 24) last.push(hour);
+    else runs.push([hour]);
+  }
+  return runs;
+}
+
+/**
+ * "9 AM – 11 AM and 3 PM – 4 PM" — a band that isn't one block. Bands stopped
+ * being single runs on 2026-09-29, and a plain start-to-end range would claim
+ * the weak hours in between.
+ */
+export function formatRanges(hours: number[]): string {
+  if (hours.length === 0) return "—";
+  const runs = hourRuns(hours).map(formatWindow);
+  if (runs.length === 1) return runs[0];
+  return `${runs.slice(0, -1).join(", ")} and ${runs[runs.length - 1]}`;
 }
 
 /**
@@ -137,28 +194,53 @@ export function topHours(map: HourAverage[], count = 2): number[] {
     .sort((a, b) => order.get(a)! - order.get(b)!);
 }
 
-/** Entries at the top of the scale, as a share of all entries (0–1). */
-export function topLevelShare(entries: Entry[]): number {
-  if (!entries.length) return 0;
-  return entries.filter((e) => e.pct === 100).length / entries.length;
-}
 
 /**
- * "Fully charged all day" detection — Jen wants these clients flagged so she
- * can call them (her feedback, 2026-09-24): someone reporting 100% almost
- * every hour is usually reading energy, not brain activity, and that's a
- * coaching conversation rather than a scheduling one.
- *
- * Needs enough hours to mean anything, so it uses the same floor as the
- * results screen.
+ * "Five hours in a row on the same level, two days running" — Jen's flag,
+ * 2026-09-29. It catches someone tapping down the column rather than reading
+ * their day, which is a coaching conversation, not a scheduling one. The
+ * level has to match on both days (Josh, same date): the same button pressed
+ * twice is the tell.
  */
-export const FLAT_TOP_SHARE = 0.8;
+export const FLAT_RUN_HOURS = 5;
 
-export function isFlatTop(entries: Entry[]): boolean {
-  return isFlatTopCounts(entries.length, entries.filter((e) => e.pct === 100).length);
+/**
+ * @param hours the session's slots in display order — runs are consecutive by
+ * slot position, so a day that wraps past midnight still counts.
+ */
+export function flatDayLevels(entries: Entry[], hours: number[]): Map<number, Set<number>> {
+  const byDay = new Map<number, Map<number, number>>();
+  for (const e of entries) {
+    if (!byDay.has(e.dayNumber)) byDay.set(e.dayNumber, new Map());
+    byDay.get(e.dayNumber)!.set(e.hour, e.pct);
+  }
+
+  const levels = new Map<number, Set<number>>();
+  for (const [day, slots] of byDay) {
+    let runLevel: number | null = null;
+    let runLength = 0;
+    const found = new Set<number>();
+    for (const hour of hours) {
+      const pct = slots.get(hour);
+      if (pct !== undefined && pct === runLevel) {
+        runLength += 1;
+      } else {
+        runLevel = pct ?? null;
+        runLength = pct === undefined ? 0 : 1;
+      }
+      if (runLength >= FLAT_RUN_HOURS && runLevel !== null) found.add(runLevel);
+    }
+    if (found.size) levels.set(day, found);
+  }
+  return levels;
 }
 
-/** Same rule from counts alone, for the roster's per-session totals. */
-export function isFlatTopCounts(hoursLogged: number, topHours: number): boolean {
-  return hoursLogged >= MIN_HOURS_FOR_RESULT && topHours / hoursLogged >= FLAT_TOP_SHARE;
+/** True when two consecutive days share a flat run at the same level. */
+export function hasRepeatedFlatRun(entries: Entry[], hours: number[]): boolean {
+  const levels = flatDayLevels(entries, hours);
+  for (const [day, dayLevels] of levels) {
+    const next = levels.get(day + 1);
+    if (next && [...dayLevels].some((level) => next.has(level))) return true;
+  }
+  return false;
 }

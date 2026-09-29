@@ -9,7 +9,7 @@ import {
   MIN_HOURS_FOR_RESULT,
   computeWeeklyMap,
   findWindows,
-  isFlatTop,
+  hasRepeatedFlatRun,
   topHours,
 } from "@/lib/weekly-map";
 
@@ -104,6 +104,6 @@ export function analyseSession(session: SessionShape, rows: EntryRow[], notes: N
     topPeak: topHours(map),
     /** Below this, the results screen withholds the peak hours entirely. */
     hasEnoughData: entries.length >= MIN_HOURS_FOR_RESULT,
-    flatTop: isFlatTop(entries),
+    flatRun: hasRepeatedFlatRun(entries, hours),
   };
 }

@@ -6,7 +6,7 @@ import { NoteForm } from "@/components/coach/NoteForm";
 import { loadSessionBundles } from "@/lib/coach-data";
 import { formatHour } from "@/lib/slots";
 import { requireCoach } from "@/lib/viewer";
-import { MIN_HOURS_FOR_RESULT, formatWindow, isFlatTopCounts } from "@/lib/weekly-map";
+import { MIN_HOURS_FOR_RESULT, formatRanges } from "@/lib/weekly-map";
 
 import { deleteNote, grantSession, revokeSession } from "./actions";
 
@@ -35,11 +35,8 @@ export default async function CoachClientPage({ params }: PageProps<"/coach/clie
 
   const name = client.full_name?.trim() || "Unnamed client";
 
-  // How the client reads their own energy, across everything they've logged.
-  const hoursLogged = bundles.reduce((n, b) => n + b.entries.length, 0);
-  const topHours = bundles.reduce((n, b) => n + b.entries.filter((e) => e.pct === 100).length, 0);
-  const flatTop = isFlatTopCounts(hoursLogged, topHours);
-  const topShare = hoursLogged ? Math.round((topHours / hoursLogged) * 100) : 0;
+  // How the client fills the grid, across everything they've logged.
+  const flaggedSessions = bundles.filter((b) => b.flatRun);
 
   // One session each, plus one per grant Jen has given (2026-09-24).
   const grantCount = grants?.length ?? 0;
@@ -90,17 +87,19 @@ export default async function CoachClientPage({ params }: PageProps<"/coach/clie
         </div>
       </div>
 
-      {flatTop ? (
+      {flaggedSessions.length ? (
         <Card className="mb-5" accent={100}>
           <div className="flex flex-wrap items-start gap-4">
             <span className="flex h-11 w-11 flex-none items-center justify-center rounded-2xl bg-level-100/12 text-[20px]" aria-hidden>
               ⚡
             </span>
             <div className="min-w-0">
-              <h2 className="font-serif text-[20px] font-semibold text-navy">Fully charged nearly all day</h2>
+              <h2 className="font-serif text-[20px] font-semibold text-navy">Same level, hours at a time</h2>
               <p className="mt-1 text-[13.5px] leading-[1.6] text-body">
-                {topShare}% of this client&rsquo;s {hoursLogged} logged hours are 100%. High energy all day often isn&rsquo;t
-                high brain activity all day — worth a call to build awareness before reading their schedule from this.
+                In {flaggedSessions.length === 1 ? "one session" : `${flaggedSessions.length} sessions`} (
+                {flaggedSessions.map((b) => b.session.label || "untitled").join(", ")}) this client logged five or more
+                straight hours on a single level, two days running. Worth a call: it usually means the grid is being
+                filled in rather than read, and the plan built from it would inherit that.
               </p>
             </div>
           </div>
@@ -189,9 +188,9 @@ export default async function CoachClientPage({ params }: PageProps<"/coach/clie
                         </div>
                       ) : null}
                     </td>
-                    <td className="px-3 py-3 text-body">{formatWindow(b.windows.peak)}</td>
-                    <td className="px-3 py-3 text-body">{formatWindow(b.windows.collaboration)}</td>
-                    <td className="px-3 py-3 text-body">{formatWindow(b.windows.recovery)}</td>
+                    <td className="px-3 py-3 text-body">{formatRanges(b.windows.peak)}</td>
+                    <td className="px-3 py-3 text-body">{formatRanges(b.windows.collaboration)}</td>
+                    <td className="px-3 py-3 text-body">{formatRanges(b.windows.recovery)}</td>
                     <td className="px-6 py-3 whitespace-nowrap">
                       <Link href={`/plan/${b.session.id}`} className="font-bold text-navy underline">
                         Plan

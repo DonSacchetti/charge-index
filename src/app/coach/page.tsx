@@ -18,8 +18,8 @@ export default async function CoachRoster({ searchParams }: PageProps<"/coach">)
   const all = buildRoster(data.profiles, data.sessions, data.noteClientIds, data.entryStats);
   const clients = filterRoster(all, query);
   const active = all.filter((c) => c.latest?.status === "in_progress").length;
-  // Clients logging 100% nearly every hour — Jen wants these visible (2026-09-24).
-  const flagged = all.filter((c) => c.flatTop).length;
+  // Five straight hours on one level, two days running (Jen, 2026-09-29).
+  const flagged = all.filter((c) => c.flatRun).length;
 
   return (
     <CoachShell>
@@ -93,12 +93,12 @@ export default async function CoachRoster({ searchParams }: PageProps<"/coach">)
                       <Link href={`/coach/clients/${c.id}`} className="font-extrabold text-navy underline">
                         {c.name}
                       </Link>
-                      {c.flatTop ? (
+                      {c.flatRun ? (
                         <span
-                          className="ml-2 rounded-full bg-level-100/12 px-[7px] py-[2px] text-[10px] font-extrabold tracking-[0.05em] text-level-100 uppercase"
-                          title={`${c.hoursLogged} hours logged, nearly all at 100% — worth a coaching call about energy vs brain activity`}
+                          className="ml-2 rounded-full bg-level-25/15 px-[7px] py-[2px] text-[10px] font-extrabold tracking-[0.05em] text-level-25 uppercase"
+                          title="Five or more straight hours on one level, two days running — worth a call about how they're filling it in"
                         >
-                          ⚡ always 100%
+                          ⚑ same level
                         </span>
                       ) : null}
                       {c.role !== "client" ? (

@@ -9,7 +9,7 @@
 import { nearestTier, scaleOf } from "@/lib/charge";
 import { type IdealZone, idealZone } from "@/lib/coach-analysis";
 import { formatHourLong } from "@/lib/slots";
-import { type HourAverage, type Windows, formatWindow } from "@/lib/weekly-map";
+import { type HourAverage, type Windows, formatRanges, hourRuns } from "@/lib/weekly-map";
 
 // ── Plan content ───────────────────────────────────────────────────────────
 
@@ -58,11 +58,11 @@ export function planSchedule(map: HourAverage[]) {
 export function planGuards(windows: Windows): { n: string; text: string }[] {
   const lines = [
     windows.peak.length &&
-      `Nothing books over ${formatWindow(windows.peak)}. That block belongs to the work only you can do.`,
+      `Nothing books over ${formatRanges(windows.peak)}. Those hours belong to the work only you can do.`,
     windows.collaboration.length &&
-      `Move collaboration into ${formatWindow(windows.collaboration)}, where your communication is strongest.`,
+      `Move collaboration into ${formatRanges(windows.collaboration)}, where your communication is strongest.`,
     windows.recovery.length &&
-      `Plan the dip at ${formatWindow(windows.recovery)} instead of pushing through it. Recovery is scheduled work.`,
+      `Plan the dip at ${formatRanges(windows.recovery)} instead of pushing through it. Recovery is scheduled work.`,
   ].filter((l): l is string => Boolean(l));
   return lines.map((text, i) => ({ n: String(i + 1).padStart(2, "0"), text }));
 }
@@ -127,9 +127,12 @@ export function buildPeakPlanIcs({
 }): string | null {
   if (peak.length === 0) return null;
 
-  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), peak[0]));
-  while (start.getUTCDay() === 0 || start.getUTCDay() === 6) start.setUTCDate(start.getUTCDate() + 1);
-  const end = new Date(start.getTime() + peak.length * 3_600_000);
+  // Peak hours can sit in two parts of the day (Jen, 2026-09-29), so each
+  // unbroken stretch becomes its own block. One event spanning the first to
+  // the last hour would book the slump in between.
+  const runs = hourRuns(peak);
+  const day0 = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  while (day0.getUTCDay() === 0 || day0.getUTCDay() === 6) day0.setUTCDate(day0.getUTCDate() + 1);
 
   const lines = [
     "BEGIN:VCALENDAR",
@@ -137,18 +140,26 @@ export function buildPeakPlanIcs({
     "PRODID:-//Soenen Strategies//Peak Plan//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    "BEGIN:VEVENT",
-    `UID:peak-plan-${sessionId}@charge-index`,
-    `DTSTAMP:${icsUtcStamp(now)}`,
-    `DTSTART:${icsFloating(start)}`,
-    `DTEND:${icsFloating(end)}`,
-    "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=20",
-    `SUMMARY:${escapeIcsText("Peak Plan Block — protected")}`,
-    `DESCRIPTION:${escapeIcsText(`Your fully-charged window (${formatWindow(peak)}). Deep work only. Source: your Charge Index.`)}`,
-    "TRANSP:OPAQUE",
-    "END:VEVENT",
-    "END:VCALENDAR",
   ];
+
+  runs.forEach((run, i) => {
+    const start = new Date(day0.getTime() + run[0] * 3_600_000);
+    const end = new Date(start.getTime() + run.length * 3_600_000);
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:peak-plan-${sessionId}${i ? `-${i}` : ""}@charge-index`,
+      `DTSTAMP:${icsUtcStamp(now)}`,
+      `DTSTART:${icsFloating(start)}`,
+      `DTEND:${icsFloating(end)}`,
+      "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=20",
+      `SUMMARY:${escapeIcsText("Peak Plan Block — protected")}`,
+      `DESCRIPTION:${escapeIcsText(`Your fully-charged hours (${formatRanges(run)}). Deep work only. Source: your Charge Index.`)}`,
+      "TRANSP:OPAQUE",
+      "END:VEVENT",
+    );
+  });
+
+  lines.push("END:VCALENDAR");
   return lines.map(foldIcsLine).join("\r\n") + "\r\n";
 }
 
