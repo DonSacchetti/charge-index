@@ -10,10 +10,26 @@ const BOOK_SESSION_URL = "https://calendly.com/soenenstrategies/introtimestrateg
 
 /* Copy below is Jen's, from Design/Prototypes/Charge Index Landing.dc.html. */
 
+// Jen's rewrite, 2026-09-29: speaks to teams as well as individuals.
 const PAINS = [
-  { n: "01", t: "Overwhelmed", d: "Uncertain about how to manage your time to accelerate results.", level: 25 },
-  { n: "02", t: "Pulled apart", d: "Confused and stressed because you're pulled in too many directions that only lead to dead ends.", level: 50 },
-  { n: "03", t: "Stalled", d: "Frustrated by the lack of results that align with your vision, despite your hard work and effort.", level: 10 },
+  {
+    n: "01",
+    t: "Busy but behind",
+    d: "The calendar's packed and the effort's there, but the work that actually matters keeps sliding.",
+    level: 25,
+  },
+  {
+    n: "02",
+    t: "Out of sync",
+    d: "Pushing hardest when energy's already spent, so good effort quietly leaks away — and meetings landing at everyone's worst hour.",
+    level: 50,
+  },
+  {
+    n: "03",
+    t: "Running hard, going nowhere",
+    d: "Long hours from good people, and results that still don't match the effort.",
+    level: 10,
+  },
 ];
 
 const STEPS = [
@@ -163,8 +179,8 @@ export default async function Home() {
       {/* ── You're in the right place ───────────────────────────────────── */}
       <section className="grain bg-paper">
         <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
-          <h2 className="max-w-2xl font-serif text-[34px] leading-[1.15] font-semibold text-navy sm:text-[42px]">
-            You&rsquo;re in the right place if you&rsquo;re done feeling
+          <h2 className="max-w-3xl font-serif text-[34px] leading-[1.15] font-semibold text-navy sm:text-[42px]">
+            You&rsquo;re in the right place if this sounds like your days — or your team&rsquo;s:
           </h2>
           <div className="mt-10 grid gap-5 md:grid-cols-3">
             {PAINS.map((p) => (
@@ -178,6 +194,9 @@ export default async function Home() {
               </div>
             ))}
           </div>
+          <p className="mt-9 max-w-2xl font-serif text-[22px] leading-[1.4] font-semibold text-navy sm:text-[26px]">
+            There&rsquo;s a better way — and it starts with energy, yours and your team&rsquo;s, not another to-do list.
+          </p>
         </div>
       </section>
 

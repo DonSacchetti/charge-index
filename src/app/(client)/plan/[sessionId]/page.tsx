@@ -2,13 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PrintButton } from "@/components/PrintButton";
+import { ZoneCards } from "@/components/coach/ZoneCards";
 import { ScheduleEditor } from "@/components/plan/ScheduleEditor";
-import { PLAN_WINDOWS, planGuards, planSchedule } from "@/lib/peak-plan";
+import { idealZoneHours } from "@/lib/coach-analysis";
+import { planGuards, planSchedule } from "@/lib/peak-plan";
 import { loadSessionAnalysis } from "@/lib/session-data";
 import { formatDayDate } from "@/lib/days";
 import { hourOf } from "@/lib/slots";
 import { canViewPeakPlan, requireViewer } from "@/lib/viewer";
-import { formatRanges } from "@/lib/weekly-map";
 
 export const metadata = { title: "The Peak Plan™ | Soenen Strategies" };
 
@@ -92,26 +93,9 @@ export default async function PeakPlanPage({ params }: PageProps<"/plan/[session
         <div className="spectrum h-[5px] print:[-webkit-print-color-adjust:exact] print:[print-color-adjust:exact]" />
 
         <div className="px-7 pt-[34px] pb-10 sm:px-[46px] print:[-webkit-print-color-adjust:exact] print:[print-color-adjust:exact]">
-          {/* Laid out along the card rather than down it (Jen, 2026-09-29):
-              stacked label, hours and description made these tall enough that
-              the plan turned into a scroll on both phone and desktop. */}
-          <div className="mb-7 grid gap-3 md:grid-cols-3 print:grid-cols-3">
-            {PLAN_WINDOWS.map((w) => (
-              <div
-                key={w.band}
-                className="relative overflow-hidden rounded-[16px] border-[1.5px] py-3 pr-4 pl-5 print:break-inside-avoid"
-                style={{ borderColor: w.color, background: w.tint }}
-              >
-                <div className="absolute inset-y-0 left-0 w-1.5" style={{ background: w.color }} />
-                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                  <span className="text-[9.5px] font-extrabold tracking-[0.13em] uppercase" style={{ color: w.color }}>
-                    {w.label}
-                  </span>
-                  <span className="font-serif text-[18px] leading-[1.2] font-semibold text-ink">{formatRanges(windows[w.band])}</span>
-                </div>
-                <p className="mt-0.5 text-[11.5px] leading-[1.45] text-body">{w.desc}</p>
-              </div>
-            ))}
+          {/* The same four zone boxes Jen sees on her side (Josh, 2026-09-29). */}
+          <div className="mb-7">
+            <ZoneCards hours={idealZoneHours(map)} />
           </div>
 
           <h2 className="mb-[3px] font-serif text-[22px] font-semibold text-navy">Your charged schedule</h2>
