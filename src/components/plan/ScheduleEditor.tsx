@@ -119,38 +119,34 @@ export function ScheduleEditor({ sessionId, items, canEdit }: Props) {
         </div>
       ) : null}
 
-      <ol className="m-0 mb-[34px] flex list-none flex-col gap-[5px] p-0">
+      {/* Two columns once there's room, so a 16-hour day doesn't become a
+          page of scrolling (Jen, 2026-09-29). Print keeps one column. */}
+      <ol className="m-0 mb-7 grid list-none grid-cols-1 gap-x-4 gap-y-[4px] p-0 lg:grid-cols-2 print:grid-cols-2">
         {items.map((s) => {
           const note = notes[s.hour] ?? "";
           const open = openHour === s.hour;
           return (
             <li
               key={s.hour}
-              className="rounded-r-xl border-l-4 px-4 py-[9px] print:break-inside-avoid"
+              className="rounded-r-lg border-l-4 px-3 py-[6px] print:break-inside-avoid"
               style={{ borderColor: s.color, background: s.tint }}
             >
-              <div className="grid grid-cols-[84px_1fr] items-baseline gap-3">
-                <span className="text-[13px] font-extrabold text-navy">{formatHourLong(s.hour)}</span>
-                <span className="flex flex-wrap items-baseline justify-between gap-x-[14px]">
-                  <span className="text-[13.5px] font-bold text-ink">{s.task}</span>
-                  <span className="text-[10.5px] font-extrabold tracking-[0.08em] uppercase" style={{ color: s.color }}>
-                    {s.zone}
-                  </span>
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                <span className="w-[72px] flex-none text-[12.5px] font-extrabold text-navy">{formatHourLong(s.hour)}</span>
+                <span className="min-w-0 flex-1 text-[12.5px] font-bold text-ink">{s.task}</span>
+                <span className="text-[9.5px] font-extrabold tracking-[0.08em] uppercase" style={{ color: s.color }}>
+                  {s.zone}
                 </span>
               </div>
 
               {note && !open ? (
-                <div className="mt-1.5 grid grid-cols-[84px_1fr] gap-3">
-                  <span />
-                  <p className="m-0 text-[13px] leading-[1.5] font-bold wrap-anywhere" style={{ color: s.color }}>
-                    {note}
-                  </p>
-                </div>
+                <p className="m-0 mt-0.5 ml-[84px] text-[12px] leading-[1.4] font-bold wrap-anywhere" style={{ color: s.color }}>
+                  {note}
+                </p>
               ) : null}
 
               {canEdit ? (
-                <div className="mt-1.5 grid grid-cols-[84px_1fr] gap-3 print:hidden">
-                  <span />
+                <div className="mt-0.5 ml-[84px] print:hidden">
                   {open ? (
                     <div>
                       <label htmlFor={`plan-note-${s.hour}`} className="sr-only">

@@ -92,21 +92,30 @@ export default async function PeakPlanPage({ params }: PageProps<"/plan/[session
         <div className="spectrum h-[5px] print:[-webkit-print-color-adjust:exact] print:[print-color-adjust:exact]" />
 
         <div className="px-7 pt-[34px] pb-10 sm:px-[46px] print:[-webkit-print-color-adjust:exact] print:[print-color-adjust:exact]">
-          <div className="mb-8 grid gap-4 md:grid-cols-3 print:grid-cols-3">
+          {/* Laid out along the card rather than down it (Jen, 2026-09-29):
+              stacked label, hours and description made these tall enough that
+              the plan turned into a scroll on both phone and desktop. */}
+          <div className="mb-7 grid gap-3 md:grid-cols-3 print:grid-cols-3">
             {PLAN_WINDOWS.map((w) => (
-              <div key={w.band} className="relative overflow-hidden rounded-[20px] border-[1.5px] p-5 print:break-inside-avoid" style={{ borderColor: w.color, background: w.tint }}>
-                <div className="absolute inset-x-0 top-0 h-1.5" style={{ background: w.color }} />
-                <div className="mb-2 text-[9.5px] font-extrabold tracking-[0.13em] uppercase" style={{ color: w.color }}>
-                  {w.label}
+              <div
+                key={w.band}
+                className="relative overflow-hidden rounded-[16px] border-[1.5px] py-3 pr-4 pl-5 print:break-inside-avoid"
+                style={{ borderColor: w.color, background: w.tint }}
+              >
+                <div className="absolute inset-y-0 left-0 w-1.5" style={{ background: w.color }} />
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                  <span className="text-[9.5px] font-extrabold tracking-[0.13em] uppercase" style={{ color: w.color }}>
+                    {w.label}
+                  </span>
+                  <span className="font-serif text-[18px] leading-[1.2] font-semibold text-ink">{formatRanges(windows[w.band])}</span>
                 </div>
-                <div className="font-serif text-[21px] leading-[1.25] font-semibold text-ink">{formatRanges(windows[w.band])}</div>
-                <p className="mt-2 text-[12px] leading-[1.6] text-body">{w.desc}</p>
+                <p className="mt-0.5 text-[11.5px] leading-[1.45] text-body">{w.desc}</p>
               </div>
             ))}
           </div>
 
-          <h2 className="mb-[5px] font-serif text-[22px] font-semibold text-navy">Your charged schedule</h2>
-          <p className="mb-[18px] text-[12.5px] leading-[1.6] text-muted">
+          <h2 className="mb-[3px] font-serif text-[22px] font-semibold text-navy">Your charged schedule</h2>
+          <p className="mb-3 text-[12.5px] leading-[1.6] text-muted">
             Match the work to the charge. This is the schedule your own data asks for.
           </p>
           <ScheduleEditor sessionId={sessionId} items={items} canEdit={canEdit} />
