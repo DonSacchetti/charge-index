@@ -12,7 +12,6 @@ Josh created these under your email address so everything was yours from day one
 
 - **Supabase** — the database and sign-ins (project `charge-index`)
 - **Vercel** — where the app runs (team `soenen-strategies`)
-- **Anthropic Console** — only if it has been created by then (powers AI insight drafts)
 - **Email provider** (Resend or Postmark) — only if it has been created by then (powers reminders)
 
 Stripe is different: you create that account yourself (step 7).
@@ -34,7 +33,7 @@ Signing up only ever creates a client account — nobody can give themselves mor
 
 The project's full working notes live in `CLAUDE.md`, which Claude Code reads automatically when you open this folder — a fresh session picks up where the build left off.
 
-1. Install Claude Code and sign in with your own Anthropic account: **https://code.claude.com/docs**
+1. Install Claude Code and sign in with your own account: **https://code.claude.com/docs**
 2. Open this project folder in it.
 3. Connect Supabase and Vercel using **your own logins**, following the connector instructions in those docs.
 
@@ -48,7 +47,6 @@ Keys created while Josh held your accounts should all be replaced. For each: cre
 | Supabase service role (secret) key | Supabase → Project Settings → API | Vercel env `SUPABASE_SERVICE_ROLE_KEY` (if reminders are on) |
 | Supabase personal access token | Supabase → Account → Access Tokens | Build tooling only — revoke it |
 | Vercel token | Vercel → Account → Tokens | Build tooling only — revoke it |
-| Anthropic API key | Anthropic Console → API Keys | Vercel env `ANTHROPIC_API_KEY` |
 | Cron secret | Any long random string | Vercel env `CRON_SECRET` and GitHub secret `CRON_SECRET` |
 | Email provider key | Your email provider | Vercel env (when reminders are wired up) |
 
@@ -56,7 +54,6 @@ Then **redeploy** in Vercel so the app picks up the new values, and confirm the 
 
 ## 5. Move billing to your card
 
-- **Anthropic:** add your card and remove Josh's.
 - **Vercel:** nothing to move while on the free Hobby plan (see step 9).
 - **Supabase:** nothing to move on the free plan.
 
@@ -91,7 +88,6 @@ To serve the app from `app.soenenstrategies.com`:
 
 | Feature | Needs |
 |---|---|
-| AI insight drafts | An Anthropic API key in Vercel (`ANTHROPIC_API_KEY`), then redeploy |
 | Reminders | An email provider account, the sender wired in, and the steps at the top of `.github/workflows/reminders.yml` |
 | Peak Plan purchases | Stripe (step 7) |
 
