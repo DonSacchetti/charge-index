@@ -136,18 +136,19 @@ export function ScheduleEditor({ sessionId, items, canEdit }: Props) {
             >
               <div className="flex items-baseline gap-2.5">
                 <span className="w-[64px] flex-none text-[11.5px] font-extrabold text-navy">{formatHourLong(s.hour)}</span>
-                <span className="min-w-0 flex-1 truncate text-[11.5px] text-body">
+                {/* Wraps rather than truncating, and always keeps the plan's
+                    own wording beside the client's note as a hint about the
+                    kind of work the hour suits (Josh, 2026-09-29). */}
+                <span className="min-w-0 flex-1 text-[11.5px] wrap-anywhere text-body">
                   {note ? (
                     <span className="font-bold" style={{ color: s.color }}>
                       {note}
                     </span>
-                  ) : (
-                    <>
-                      <span className="font-bold text-ink sm:hidden">{s.short}</span>
-                      <span className="hidden font-bold text-ink sm:inline">{s.task}</span>
-                    </>
-                  )}
-                  {note ? <span className="ml-2 hidden text-[10.5px] text-muted sm:inline">{s.task}</span> : null}
+                  ) : null}
+                  <span className={note ? "ml-2 text-[10.5px] text-muted" : "font-bold text-ink"}>
+                    <span className="sm:hidden">{s.short}</span>
+                    <span className="hidden sm:inline">{s.task}</span>
+                  </span>
                 </span>
                 {canEdit && !open ? (
                   <button
