@@ -364,6 +364,17 @@ try {
   );
   expect(denied(await alice.db.from("team_rounds").insert({ team_id: team.id, number: 9 })), "nor start a round");
 
+  console.log("\nThe lead's roster is aggregates only");
+  const progressAsLead = await alice.db.rpc("team_progress", { p_team: team.id });
+  expect(!progressAsLead.error && progressAsLead.data.length === 2, "a lead can read their team's progress");
+  expect(
+    progressAsLead.data.every((r) => "hours_logged" in r && "flagged" in r && !("energy_pct" in r)),
+    "and gets counts, never an hour's value",
+  );
+  expect(Boolean((await bob.db.rpc("team_progress", { p_team: team.id })).error), "a member cannot read the roster");
+  expect(Boolean((await carol.db.rpc("team_progress", { p_team: team.id })).error), "nor can someone outside the team");
+  expect(!(await coach.db.rpc("team_progress", { p_team: team.id })).error, "a coach can");
+
   console.log("\nTracking for a round");
   const { data: round } = await coach.db
     .from("team_rounds")

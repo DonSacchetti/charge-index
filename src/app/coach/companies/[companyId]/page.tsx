@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 
 import { Card, CoachShell } from "@/components/CoachShell";
 import { InviteLink, NewTeamForm } from "@/components/coach/CompanyForms";
-import { inviteUrl } from "@/lib/teams";
+import { TeamRoster } from "@/components/team/TeamRoster";
+import { inviteUrl, loadTeamProgress } from "@/lib/teams";
 import { requireCoach } from "@/lib/viewer";
 
 import { setSeats, startRound } from "../actions";
@@ -24,6 +25,14 @@ export default async function CompanyPage({ params }: PageProps<"/coach/companie
     ]);
 
   if (!company) notFound();
+
+  // Jen sees the same roster the lead does — she also has the full client
+  // view of each member elsewhere, which the lead never gets.
+  const rosters = new Map(
+    await Promise.all(
+      (teams ?? []).map(async (t) => [t.id, await loadTeamProgress(supabase, t.id)] as const),
+    ),
+  );
 
   // The links are absolute so Jen can paste them straight into an email.
   const host = (await headers()).get("host") ?? "charge-index.vercel.app";
@@ -132,6 +141,13 @@ export default async function CompanyPage({ params }: PageProps<"/coach/companie
                 </p>
               </form>
             </div>
+
+            {own.length ? (
+              <div className="mt-5 border-t border-[#f0efea] pt-4">
+                <h3 className="mb-3 text-[10.5px] font-extrabold tracking-[0.07em] text-navy uppercase">Progress</h3>
+                <TeamRoster rows={rosters.get(team.id) ?? []} seats={team.seats} forLead={false} />
+              </div>
+            ) : null}
 
             <div className="mt-5 border-t border-[#f0efea] pt-4">
               <div className="flex flex-wrap items-center justify-between gap-3">

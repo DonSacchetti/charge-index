@@ -106,3 +106,30 @@ export async function loadMyTeam(supabase: Db, clientId: string) {
     currentRound: (rounds ?? []).find((r) => r.status === "tracking") ?? null,
   };
 }
+
+/** One member's progress, as team_progress() returns it. */
+export type TeamProgressRow = {
+  client_id: string;
+  full_name: string | null;
+  role: "lead" | "member";
+  joined_at: string;
+  session_id: string | null;
+  session_status: string | null;
+  day_count: number;
+  hours_per_day: number;
+  hours_logged: number;
+  days_complete: number;
+  missed_hours: number;
+  flagged: boolean;
+};
+
+/**
+ * The roster for a team. Computed in the database so a lead never touches the
+ * entries behind it; the function refuses anyone who isn't that team's lead
+ * or a coach.
+ */
+export async function loadTeamProgress(supabase: Db, teamId: string): Promise<TeamProgressRow[]> {
+  const { data, error } = await supabase.rpc("team_progress", { p_team: teamId });
+  if (error) return [];
+  return (data ?? []) as TeamProgressRow[];
+}

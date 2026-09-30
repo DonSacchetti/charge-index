@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 
 import { PageBody, PageHero, SectionLabel, Surface } from "@/components/AppShell";
 import { InviteLink } from "@/components/coach/CompanyForms";
-import { loadMyTeam, inviteUrl } from "@/lib/teams";
+import { TeamRoster } from "@/components/team/TeamRoster";
+import { loadMyTeam, loadTeamProgress, inviteUrl } from "@/lib/teams";
 import { requireViewer } from "@/lib/viewer";
 
 /**
@@ -40,6 +41,8 @@ export default async function TeamPage() {
   const origin = `${host.startsWith("localhost") ? "http" : "https"}://${host}`;
 
   const logged = session?.daily_entries?.[0]?.count ?? 0;
+  // Progress only, and only for the lead — team_progress() enforces that too.
+  const roster = isLead ? await loadTeamProgress(supabase, team.id) : [];
 
   return (
     <>
@@ -97,9 +100,23 @@ export default async function TeamPage() {
                 </p>
               )}
             </Surface>
+
+            {isLead ? (
+              <Surface className="p-6 sm:p-8" delay={120}>
+                <SectionLabel>Your team</SectionLabel>
+                <h2 className="mb-1 font-serif text-[24px] font-semibold text-navy">How everyone&rsquo;s doing</h2>
+                <p className="mb-5 text-[13.5px] leading-[1.6] text-body">
+                  How far through the week each person is. What they logged, and what it says about them, stays between
+                  them and Jen.
+                </p>
+                <TeamRoster rows={roster} seats={team.seats} forLead />
+              </Surface>
+            ) : null}
           </div>
 
-          <div className="flex flex-col gap-5">
+          {/* min-w-0: the invite link's nowrap token sets this column's
+              minimum width otherwise, which widens the whole grid track. */}
+          <div className="flex min-w-0 flex-col gap-5">
             {isLead ? (
               <Surface className="p-6 sm:p-7" accent="gold">
                 <SectionLabel>Invite your team</SectionLabel>

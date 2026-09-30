@@ -79,10 +79,12 @@ export function InviteLink({ label, url, hint, muted }: { label: string; url: st
   const [copied, setCopied] = useState(false);
 
   return (
-    <div className={muted ? "opacity-60" : undefined}>
+    <div className={`min-w-0 ${muted ? "opacity-60" : ""}`}>
       <div className="mb-[5px] text-[10.5px] font-extrabold tracking-[0.07em] text-navy uppercase">{label}</div>
-      <div className="flex flex-wrap items-center gap-2">
-        <code className="min-w-0 flex-1 overflow-x-auto rounded-[9px] bg-[#f4f3ef] px-3 py-2 text-[11.5px] whitespace-nowrap text-body">
+      {/* min-w-0 on both: a long token in a nowrap box pushes a flex row wider
+          than the phone otherwise (found at 375px). */}
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <code className="block w-full min-w-0 max-w-full flex-1 overflow-x-auto rounded-[9px] bg-[#f4f3ef] px-3 py-2 text-[11.5px] whitespace-nowrap text-body sm:w-auto">
           {url}
         </code>
         <button
