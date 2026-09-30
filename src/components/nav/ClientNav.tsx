@@ -36,6 +36,14 @@ const Icon = {
       <path d="M9 9h6M9 13h6M9 17h3" />
     </>
   ),
+  team: (
+    <>
+      <circle cx="9" cy="8" r="3" />
+      <circle cx="17" cy="9.5" r="2.4" />
+      <path d="M3.5 19.5c.5-3.2 2.6-5 5.5-5s5 1.8 5.5 5" />
+      <path d="M16 14.5c2.2.2 3.8 1.8 4.2 4.3" />
+    </>
+  ),
   coach: (
     <>
       <circle cx="9" cy="8" r="3.2" />
@@ -73,6 +81,18 @@ function items(nav: ClientNavData): Item[] {
       icon: Icon.results,
       color: "var(--color-glow-25)",
     },
+    ...(nav.teamName
+      ? [
+          {
+            key: "team",
+            label: "Team",
+            href: "/team",
+            active: (p: string) => p === "/team",
+            icon: Icon.team,
+            color: "var(--color-glow-50)",
+          },
+        ]
+      : []),
     {
       key: "plan",
       label: "Peak Plan",

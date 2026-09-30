@@ -8,7 +8,9 @@ import type { Database } from "@/lib/database.types";
  * /api/cron is machine-to-machine: it has no session and authenticates with
  * its own secret instead (see src/app/api/cron/reminders/route.ts).
  */
-const PUBLIC_PATHS = ["/", "/login", "/signup", "/auth", "/api/cron"];
+// /join is public so an invited person meets a "join your team" page that
+// sends them to SIGN UP, rather than the proxy's generic login redirect.
+const PUBLIC_PATHS = ["/", "/login", "/signup", "/auth", "/api/cron", "/join"];
 
 function isPublic(pathname: string) {
   return PUBLIC_PATHS.some(

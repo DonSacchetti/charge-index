@@ -14,6 +14,7 @@ export default async function SignupPage({ searchParams }: PageProps<"/signup">)
 
   const params = await searchParams;
   const checkEmail = typeof params.check === "string" ? params.check : null;
+  const next = typeof params.next === "string" ? params.next : null;
 
   const hero = {
     eyebrow: "The Charge Index™ · free assessment",
@@ -56,7 +57,7 @@ export default async function SignupPage({ searchParams }: PageProps<"/signup">)
   return (
     <AuthShell {...hero}>
       <h2 className="mb-6 font-serif text-[28px] font-semibold text-navy">Create your account</h2>
-      <SignupForm />
+      <SignupForm next={next} />
     </AuthShell>
   );
 }

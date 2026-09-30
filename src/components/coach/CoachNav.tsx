@@ -4,8 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 // Jen works client by client, so the all-sessions list is gone (2026-09-29).
+// Companies are kept apart from individual clients — her call, same date.
 const LINKS = [
-  { href: "/coach", label: "Clients", match: (p: string) => p === "/coach" || p.startsWith("/coach/") },
+  {
+    href: "/coach",
+    label: "Clients",
+    match: (p: string) => p === "/coach" || (p.startsWith("/coach/") && !p.startsWith("/coach/companies")),
+  },
+  { href: "/coach/companies", label: "Companies", match: (p: string) => p.startsWith("/coach/companies") },
 ];
 
 /** Admin-area navigation. "Client view" goes to the same screens a client uses. */

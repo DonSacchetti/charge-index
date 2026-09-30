@@ -17,12 +17,14 @@ function Submit() {
   return <SubmitButton pending={pending}>Create my account</SubmitButton>;
 }
 
-export function SignupForm() {
+export function SignupForm({ next }: { next?: string | null }) {
   const [state, formAction] = useActionState(signUp, null);
 
   return (
     <form action={formAction} className="flex flex-col gap-[11px]">
       <FormError message={state?.error} />
+      {/* Where to land afterwards — an invite link puts /join/<token> here. */}
+      {next ? <input type="hidden" name="next" value={next} /> : null}
 
       <div>
         <FieldLabel htmlFor="signup-name">First name</FieldLabel>
@@ -68,7 +70,7 @@ export function SignupForm() {
 
       <p className="mt-2 text-center text-[12.5px] text-body">
         Already tracking?{" "}
-        <Link href="/login" className="font-bold text-navy underline">
+        <Link href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} className="font-bold text-navy underline">
           Sign in
         </Link>
       </p>

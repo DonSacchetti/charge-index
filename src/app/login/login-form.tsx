@@ -56,7 +56,7 @@ export function LoginForm({ next, notice }: { next?: string; notice?: string }) 
 
       <p className="mt-2 text-center text-[12.5px] text-body">
         First time here?{" "}
-        <Link href="/signup" className="font-bold text-navy underline">
+        <Link href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"} className="font-bold text-navy underline">
           Create an account
         </Link>
       </p>

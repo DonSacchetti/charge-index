@@ -20,6 +20,9 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
   const fullName = String(formData.get("full_name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  // Where to land afterwards — an invite link puts /join/<token> here, and it
+  // has to survive the round trip through the confirmation email.
+  const next = safeNext(formData.get("next"));
 
   if (!fullName) return { error: "Add your first name to begin." };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
@@ -36,7 +39,7 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
     options: {
       // Read by the handle_new_user trigger to populate profiles.full_name.
       data: { full_name: fullName },
-      emailRedirectTo: `${origin}/auth/confirm`,
+      emailRedirectTo: `${origin}/auth/confirm?next=${encodeURIComponent(next)}`,
     },
   });
 
@@ -47,7 +50,7 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
   if (!data.session) redirect(`/signup?check=${encodeURIComponent(email)}`);
 
   revalidatePath("/", "layout");
-  redirect("/setup");
+  redirect(next === "/" ? "/setup" : next);
 }
 
 export async function signIn(_prev: AuthState, formData: FormData): Promise<AuthState> {

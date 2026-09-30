@@ -7,4 +7,6 @@ export type ClientNavData = {
   /** The Peak Plan for the latest purchased session, if any. */
   planHref: string | null;
   isStaff: boolean;
+  /** Set when they belong to a corporate team (2026-09-30). */
+  teamName: string | null;
 };

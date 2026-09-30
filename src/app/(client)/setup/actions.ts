@@ -95,10 +95,19 @@ export async function createSession(
       error: "You've already had your Charge Index. Ask Jen to reopen tracking for you.",
     };
 
+  // A session started while the client's team has a round running belongs to
+  // that round (corporate teams, 2026-09-30). can_start_session() grants it
+  // separately from their individual allowance.
+  const { data: roundId } = await supabase.rpc("active_round");
+  const { data: existingForRound } = roundId
+    ? await supabase.from("tracking_sessions").select("id").eq("client_id", user.id).eq("round_id", roundId).maybeSingle()
+    : { data: null };
+
   const { data, error } = await supabase
     .from("tracking_sessions")
     .insert({
       client_id: user.id,
+      round_id: roundId && !existingForRound ? roundId : null,
       label,
       wake_time: toTimeValue(wake),
       sleep_time: toTimeValue(sleep),

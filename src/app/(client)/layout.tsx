@@ -17,10 +17,11 @@ export default async function ClientLayout({ children }: { children: ReactNode }
 
   let nav: ClientNavData | null = null;
   if (user) {
-    const [{ data: profile }, { data: sessions }, { data: purchases }] = await Promise.all([
+    const [{ data: profile }, { data: sessions }, { data: purchases }, { data: team }] = await Promise.all([
       supabase.from("profiles").select("full_name, role").eq("id", user.id).single(),
       supabase.from("tracking_sessions").select("id, status").eq("client_id", user.id).order("start_date", { ascending: false }).order("created_at", { ascending: false }).limit(50),
       supabase.from("purchases").select("session_id").eq("client_id", user.id).eq("product", "basic_peak_plan").eq("status", "completed"),
+      supabase.from("team_memberships").select("teams(name)").eq("client_id", user.id).maybeSingle(),
     ]);
     const inProgress = sessions?.find((s) => s.status === "in_progress");
     const completed = sessions?.find((s) => s.status === "completed");
@@ -42,6 +43,7 @@ export default async function ClientLayout({ children }: { children: ReactNode }
       resultsHref: completed ? `/track/${completed.id}/complete` : null,
       planHref: planned ? `/plan/${planned.id}` : null,
       isStaff,
+      teamName: team?.teams?.name ?? null,
     };
   }
 

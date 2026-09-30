@@ -310,6 +310,78 @@ try {
   const { data: coachSession } = await coach.db.from("tracking_sessions").select("id").eq("client_id", coach.id).limit(1).single();
   expect(!(await coach.db.from("plan_notes").insert({ session_id: coachSession.id, slot_hour: "09:00", body: "my own plan" })).error, "a coach can write notes on their own plan, with no purchase");
 
+  console.log("\nCorporate teams");
+  const { data: company } = await coach.db.from("companies").insert({ name: "rls-check co", created_by: coach.id }).select("id").single();
+  expect(Boolean(company), "a coach can create a company");
+  expect(denied(await alice.db.from("companies").insert({ name: "forged", created_by: alice.id })), "a client cannot");
+  expect((await count(alice.db, "companies", "id", company.id)) === 0, "and cannot read one");
+
+  const { data: team } = await coach.db
+    .from("teams")
+    .insert({ company_id: company.id, name: "rls-check team" })
+    .select("id")
+    .single();
+  const leadToken = `rls-lead-${stamp}`;
+  const memberToken = `rls-member-${stamp}`;
+  await coach.db.from("team_invites").insert([
+    { team_id: team.id, kind: "lead", token: leadToken },
+    { team_id: team.id, kind: "member", token: memberToken },
+  ]);
+
+  // Seats are the payment gate: nothing works until Jen opens them.
+  expect(Boolean((await bob.db.rpc("join_team", { p_token: memberToken })).error), "the member link is closed until seats are set");
+  expect(!(await alice.db.rpc("join_team", { p_token: leadToken })).error, "the lead link works once");
+  expect(Boolean((await bob.db.rpc("join_team", { p_token: leadToken })).error), "and only once");
+
+  await coach.db.from("teams").update({ seats: 2 }).eq("id", team.id);
+  expect(!(await bob.db.rpc("join_team", { p_token: memberToken })).error, "a member joins once seats are open");
+  const carol = await makeUser("carol");
+  expect(Boolean((await carol.db.rpc("join_team", { p_token: memberToken })).error), "and the link refuses when the team is full");
+
+  console.log("\nWhat a team lead can and cannot see");
+  // alice is the lead, bob is a member with a session and entries.
+  const { data: bobsSession } = await admin
+    .from("tracking_sessions")
+    .insert({ client_id: bob.id, label: "rls-check", wake_time: "06:00", sleep_time: "22:00", day_count: 5 })
+    .select("id")
+    .single();
+  await admin.from("daily_entries").insert({ session_id: bobsSession.id, day_number: 1, slot_hour: "09:00", energy_pct: 100 });
+  await admin.from("daily_notes").insert({ session_id: bobsSession.id, day_number: 1, for_jen_note: "private" });
+
+  expect((await count(alice.db, "team_memberships", "team_id", team.id)) === 2, "the lead sees who is in their team");
+  expect((await count(alice.db, "tracking_sessions", "client_id", bob.id)) === 0, "but not a member's sessions");
+  expect((await count(alice.db, "daily_entries", "session_id", bobsSession.id)) === 0, "nor their entries");
+  expect((await count(alice.db, "daily_notes", "session_id", bobsSession.id)) === 0, "nor their reflections");
+  expect((await count(bob.db, "team_memberships", "team_id", team.id)) === 1, "a member sees only their own membership");
+  expect((await count(alice.db, "team_invites", "team_id", team.id)) === 1, "the lead gets the member link, not the lead link");
+  expect((await count(bob.db, "team_invites", "team_id", team.id)) === 0, "a member gets no links at all");
+  // An update that matches no policy changes no rows rather than erroring, so
+  // this reads the value back rather than trusting the response.
+  await alice.db.from("teams").update({ seats: 99 }).eq("id", team.id);
+  expect(
+    (await admin.from("teams").select("seats").eq("id", team.id).single()).data?.seats === 2,
+    "a lead cannot give themselves more seats",
+  );
+  expect(denied(await alice.db.from("team_rounds").insert({ team_id: team.id, number: 9 })), "nor start a round");
+
+  console.log("\nTracking for a round");
+  const { data: round } = await coach.db
+    .from("team_rounds")
+    .insert({ team_id: team.id, number: 1, status: "tracking" })
+    .select("id")
+    .single();
+  const { data: bobRound } = await bob.db.rpc("active_round");
+  expect(bobRound === round.id, "a member's active round is the one their team is running");
+  expect((await bob.db.rpc("can_start_session")).data === true, "and it grants them a session even though they've used their own");
+  expect(
+    !(await bob.db.from("tracking_sessions").insert({ client_id: bob.id, label: "rls-check", wake_time: "06:00", sleep_time: "22:00", day_count: 5, round_id: round.id })).error,
+    "so they can start tracking for it",
+  );
+  expect(
+    (await bob.db.rpc("can_start_session")).data === false,
+    "but only one session per round",
+  );
+
 } catch (error) {
   fail(`script error: ${error.message}`);
 } finally {
@@ -318,6 +390,9 @@ try {
     const { error } = await admin.auth.admin.deleteUser(id);
     if (error) fail(`delete user ${id}: ${error.message}`);
   }
+  // Companies survive their creator (created_by is ON DELETE SET NULL), so
+  // they're removed by name — teams, invites, rounds and memberships cascade.
+  await admin.from("companies").delete().eq("name", "rls-check co");
   const { count: leftover } = await admin
     .from("tracking_sessions")
     .select("*", { count: "exact", head: true })
