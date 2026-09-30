@@ -85,6 +85,27 @@ export async function startRound(companyId: string, teamId: string) {
   revalidatePath(`/coach/companies/${companyId}`);
 }
 
+/** Jen's own notes about a company — the corporate equivalent of coach notes. */
+export async function saveCompanyNotes(companyId: string, _prev: CompanyState, formData: FormData): Promise<CompanyState> {
+  const { supabase } = await requireCoach(`/coach/companies/${companyId}`);
+
+  const notes = String(formData.get("notes") ?? "").trim();
+  if (notes.length > 10000) return { error: "Notes are limited to 10,000 characters." };
+
+  const { error } = await supabase.from("companies").update({ notes: notes || null }).eq("id", companyId);
+  if (error) return { error: `Couldn't save: ${error.message}` };
+
+  revalidatePath(`/coach/companies/${companyId}`);
+  return null;
+}
+
+/** Remove a team and everything under it. Rounds, invites and plans cascade. */
+export async function deleteTeam(companyId: string, teamId: string) {
+  const { supabase } = await requireCoach(`/coach/companies/${companyId}`);
+  await supabase.from("teams").delete().eq("id", teamId);
+  revalidatePath(`/coach/companies/${companyId}`);
+}
+
 /** Delete a company and everything under it. Teams and rounds cascade. */
 export async function deleteCompany(companyId: string) {
   const { supabase } = await requireCoach("/coach/companies");

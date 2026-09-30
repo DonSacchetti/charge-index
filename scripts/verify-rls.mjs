@@ -375,6 +375,18 @@ try {
   expect(Boolean((await carol.db.rpc("team_progress", { p_team: team.id })).error), "nor can someone outside the team");
   expect(!(await coach.db.rpc("team_progress", { p_team: team.id })).error, "a coach can");
 
+  console.log("\nCompany notes and the corporate exports");
+  await coach.db.from("companies").update({ notes: "coach-only" }).eq("id", company.id);
+  expect(
+    (await admin.from("companies").select("notes").eq("id", company.id).single()).data?.notes === "coach-only",
+    "a coach can keep notes on a company",
+  );
+  await alice.db.from("companies").update({ notes: "forged" }).eq("id", company.id);
+  expect(
+    (await admin.from("companies").select("notes").eq("id", company.id).single()).data?.notes === "coach-only",
+    "a team lead cannot change them",
+  );
+
   console.log("\nThe team plan is released by hand");
   const { data: planRound } = await coach.db
     .from("team_rounds")

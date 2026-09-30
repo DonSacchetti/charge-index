@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Card, CoachShell } from "@/components/CoachShell";
+import { CompanyNotes, RemoveTeam } from "@/components/coach/CompanyNotes";
 import { InviteLink, NewTeamForm } from "@/components/coach/CompanyForms";
 import { TeamPlanView } from "@/components/team/TeamPlanView";
 import { TeamRoster } from "@/components/team/TeamRoster";
@@ -19,7 +20,7 @@ export default async function CompanyPage({ params }: PageProps<"/coach/companie
 
   const [{ data: company }, { data: teams }, { data: invites }, { data: memberships }, { data: rounds }] =
     await Promise.all([
-      supabase.from("companies").select("id, name, created_at").eq("id", companyId).maybeSingle(),
+      supabase.from("companies").select("id, name, notes, created_at").eq("id", companyId).maybeSingle(),
       supabase.from("teams").select("id, name, seats, lead_id, created_at").eq("company_id", companyId).order("name"),
       supabase.from("team_invites").select("team_id, kind, token, uses"),
       supabase.from("team_memberships").select("team_id, client_id, role, profiles(full_name, email)"),
@@ -59,14 +60,26 @@ export default async function CompanyPage({ params }: PageProps<"/coach/companie
       <div className="aurora animate-rise mt-3 mb-5 rounded-[28px] px-6 py-8 text-white shadow-[0_30px_70px_-35px_rgba(19,36,73,0.8)] sm:px-9">
         <div className="mb-[7px] text-[10px] font-extrabold tracking-[0.15em] text-white/50 uppercase">Company</div>
         <h1 className="font-serif text-[30px] leading-[1.15] font-semibold">{company.name}</h1>
-        <p className="mt-[7px] text-[13.5px] text-white/75">
-          {(teams ?? []).length} {(teams ?? []).length === 1 ? "team" : "teams"} · added {company.created_at.slice(0, 10)}
-        </p>
+        <div className="mt-[7px] flex flex-wrap items-center justify-between gap-3">
+          <p className="m-0 text-[13.5px] text-white/75">
+            {(teams ?? []).length} {(teams ?? []).length === 1 ? "team" : "teams"} · added {company.created_at.slice(0, 10)}
+          </p>
+          <a
+            href={`/coach/companies/${companyId}/progress.csv`}
+            className="inline-flex min-h-11 items-center rounded-2xl border-[1.5px] border-white/30 bg-white/10 px-5 text-[13.5px] font-extrabold text-white transition hover:bg-white/20"
+          >
+            Progress (CSV)
+          </a>
+        </div>
       </div>
 
       <Card className="mb-5" accent="gold">
         <h2 className="mb-1 font-serif text-[20px] font-semibold text-navy">Add a team</h2>
         <NewTeamForm companyId={companyId} />
+      </Card>
+
+      <Card className="mb-5">
+        <CompanyNotes companyId={companyId} notes={company.notes} />
       </Card>
 
       {(teams ?? []).map((team) => {
@@ -87,8 +100,9 @@ export default async function CompanyPage({ params }: PageProps<"/coach/companie
           <Card key={team.id} className="mb-5" accent="spectrum">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <h2 className="font-serif text-[22px] font-semibold text-navy">{team.name}</h2>
-              <span className="text-[12px] font-bold text-muted">
+              <span className="flex items-center gap-3 text-[12px] font-bold text-muted">
                 {own.length} of {team.seats || 0} seats taken
+                <RemoveTeam companyId={companyId} teamId={team.id} teamName={team.name} />
               </span>
             </div>
 

@@ -10,14 +10,23 @@ import { requireCoach } from "@/lib/viewer";
  * 2026-09-29). A company has teams; a team runs rounds; a round produces the
  * team Peak Plan only the lead sees.
  */
-export default async function CompaniesPage() {
+export default async function CompaniesPage({ searchParams }: PageProps<"/coach/companies">) {
   const { supabase } = await requireCoach("/coach/companies");
-  const companies = await loadCompanies(supabase);
+  const { q } = await searchParams;
+  const query = typeof q === "string" ? q.trim().toLowerCase() : "";
+
+  const all = await loadCompanies(supabase);
+  const companies = query
+    ? all.filter(
+        (c) => c.name.toLowerCase().includes(query) || c.teams.some((t) => t.name.toLowerCase().includes(query)),
+      )
+    : all;
 
   const totals = {
-    teams: companies.reduce((n, c) => n + c.teams.length, 0),
-    people: companies.reduce((n, c) => n + c.teams.reduce((m, t) => m + t.members.length, 0), 0),
-    tracking: companies.reduce(
+    companies: all.length,
+    teams: all.reduce((n, c) => n + c.teams.length, 0),
+    people: all.reduce((n, c) => n + c.teams.reduce((m, t) => m + t.members.length, 0), 0),
+    tracking: all.reduce(
       (n, c) => n + c.teams.filter((t) => t.rounds.some((r) => r.status === "tracking")).length,
       0,
     ),
@@ -30,7 +39,7 @@ export default async function CompaniesPage() {
         <h1 className="mt-2 font-serif text-[40px] leading-tight font-semibold">Companies</h1>
         <dl className="m-0 mt-7 grid grid-cols-3 gap-3">
           {[
-            { label: companies.length === 1 ? "company" : "companies", value: companies.length, level: 75 },
+            { label: totals.companies === 1 ? "company" : "companies", value: totals.companies, level: 75 },
             { label: totals.teams === 1 ? "team" : "teams", value: totals.teams, level: 100 },
             { label: "people joined", value: totals.people, level: 25 },
           ].map((s, i) => (
@@ -53,6 +62,25 @@ export default async function CompaniesPage() {
         ) : null}
       </div>
 
+      {all.length > 3 ? (
+        <form className="mb-4 flex gap-2" role="search">
+          <label htmlFor="company-search" className="sr-only">
+            Search companies
+          </label>
+          <input
+            id="company-search"
+            name="q"
+            type="search"
+            defaultValue={query}
+            placeholder="Search by company or team"
+            className="w-full max-w-sm rounded-2xl border-[1.5px] border-line bg-white px-4 py-3 text-[14px] text-ink outline-none transition focus:border-gold focus:ring-4 focus:ring-gold/20"
+          />
+          <button type="submit" className="rounded-2xl bg-navy px-5 text-[13.5px] font-extrabold text-white transition hover:bg-navy-light">
+            Search
+          </button>
+        </form>
+      ) : null}
+
       <Card className="mb-5" accent="gold">
         <h2 className="mb-1 font-serif text-[20px] font-semibold text-navy">Add a company</h2>
         <p className="mb-4 text-[12.5px] leading-[1.6] text-muted">
@@ -64,7 +92,9 @@ export default async function CompaniesPage() {
 
       {companies.length === 0 ? (
         <Card>
-          <p className="m-0 text-[13.5px] text-body">No companies yet. Add one above to get started.</p>
+          <p className="m-0 text-[13.5px] text-body">
+            {query ? `No companies match “${query}”.` : "No companies yet. Add one above to get started."}
+          </p>
         </Card>
       ) : (
         <div className="flex flex-col gap-4">
