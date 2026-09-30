@@ -6,6 +6,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/lib/database.types";
 import { fetchAll } from "@/lib/fetch-all";
+import { analyseSession } from "@/lib/session-data";
+import { type TeamMember, type TeamPlan, buildTeamPlan } from "@/lib/team-plan";
 
 type Db = SupabaseClient<Database>;
 
@@ -132,4 +134,61 @@ export async function loadTeamProgress(supabase: Db, teamId: string): Promise<Te
   const { data, error } = await supabase.rpc("team_progress", { p_team: teamId });
   if (error) return [];
   return (data ?? []) as TeamProgressRow[];
+}
+
+/**
+ * Build a team's plan from everyone's week. Only a coach can run this: it
+ * reads the members' entries, which is exactly what a lead may not do. The
+ * result is stored by the release action and read back from there.
+ */
+export async function computeTeamPlan(supabase: Db, roundId: string): Promise<TeamPlan> {
+  const sessions = await fetchAll((from, to) =>
+    supabase
+      .from("tracking_sessions")
+      .select("id, client_id, wake_time, sleep_time, day_count, profiles(full_name)")
+      .eq("round_id", roundId)
+      .order("id")
+      .range(from, to),
+  );
+  if (!sessions.length) return buildTeamPlan([]);
+
+  const entries = await fetchAll((from, to) =>
+    supabase
+      .from("daily_entries")
+      .select("session_id, day_number, slot_hour, energy_pct")
+      .in("session_id", sessions.map((s) => s.id))
+      .order("id")
+      .range(from, to),
+  );
+
+  const members: TeamMember[] = sessions.map((session) => {
+    const own = entries.filter((e) => e.session_id === session.id);
+    const analysis = analyseSession(session, own, []);
+    return {
+      clientId: session.client_id,
+      name: session.profiles?.full_name ?? null,
+      map: analysis.map,
+      hoursLogged: analysis.entries.length,
+    };
+  });
+
+  return buildTeamPlan(members);
+}
+
+/** The plan a team has been given, if Jen has released one. */
+export async function loadReleasedPlan(supabase: Db, teamId: string) {
+  const { data } = await supabase
+    .from("team_plans")
+    .select("round_id, plan, released_at, team_rounds(number)")
+    .eq("team_id", teamId)
+    .order("released_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    roundId: data.round_id,
+    roundNumber: data.team_rounds?.number ?? null,
+    releasedAt: data.released_at,
+    plan: data.plan as unknown as TeamPlan,
+  };
 }

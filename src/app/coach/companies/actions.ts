@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { inviteToken } from "@/lib/teams";
+import { computeTeamPlan, inviteToken } from "@/lib/teams";
 import { requireCoach } from "@/lib/viewer";
 
 export type CompanyState = { error: string } | null;
@@ -90,4 +90,45 @@ export async function deleteCompany(companyId: string) {
   const { supabase } = await requireCoach("/coach/companies");
   await supabase.from("companies").delete().eq("id", companyId);
   revalidatePath("/coach/companies");
+}
+
+/**
+ * Release a team's plan (Jen's call, always by hand). The plan is computed
+ * here, from data only she can read, and stored — so the lead reads a result
+ * rather than the hours behind it, and a plan a company has been given can't
+ * shift under them afterwards.
+ */
+export async function releaseTeamPlan(companyId: string, teamId: string, roundId: string) {
+  const { supabase, user } = await requireCoach(`/coach/companies/${companyId}`);
+
+  const plan = await computeTeamPlan(supabase, roundId);
+  const { error } = await supabase.from("team_plans").upsert(
+    {
+      round_id: roundId,
+      team_id: teamId,
+      // The plan is plain data; Postgres stores it as jsonb either way.
+      plan: JSON.parse(JSON.stringify(plan)),
+      released_at: new Date().toISOString(),
+      released_by: user.id,
+    },
+    { onConflict: "round_id" },
+  );
+  if (error) return;
+
+  await supabase
+    .from("team_rounds")
+    .update({ status: "released", released_at: new Date().toISOString(), released_by: user.id })
+    .eq("id", roundId);
+
+  revalidatePath(`/coach/companies/${companyId}`);
+  revalidatePath("/team");
+}
+
+/** Take a plan back — it stops being visible to the lead immediately. */
+export async function withdrawTeamPlan(companyId: string, roundId: string) {
+  const { supabase } = await requireCoach(`/coach/companies/${companyId}`);
+  await supabase.from("team_plans").delete().eq("round_id", roundId);
+  await supabase.from("team_rounds").update({ status: "tracking", released_at: null }).eq("id", roundId);
+  revalidatePath(`/coach/companies/${companyId}`);
+  revalidatePath("/team");
 }

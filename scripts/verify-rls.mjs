@@ -375,6 +375,24 @@ try {
   expect(Boolean((await carol.db.rpc("team_progress", { p_team: team.id })).error), "nor can someone outside the team");
   expect(!(await coach.db.rpc("team_progress", { p_team: team.id })).error, "a coach can");
 
+  console.log("\nThe team plan is released by hand");
+  const { data: planRound } = await coach.db
+    .from("team_rounds")
+    .insert({ team_id: team.id, number: 9, status: "tracking" })
+    .select("id")
+    .single();
+  expect(
+    denied(await alice.db.from("team_plans").insert({ round_id: planRound.id, team_id: team.id, plan: {} })),
+    "a lead cannot release their own team's plan",
+  );
+  await coach.db.from("team_plans").insert({ round_id: planRound.id, team_id: team.id, plan: { headlines: ["x"] } });
+  expect((await count(alice.db, "team_plans", "team_id", team.id)) === 1, "a lead reads the plan once a coach releases it");
+  expect((await count(bob.db, "team_plans", "team_id", team.id)) === 0, "a member never sees the team plan");
+  expect((await count(carol.db, "team_plans", "team_id", team.id)) === 0, "nor does anyone outside the team");
+  await coach.db.from("team_plans").delete().eq("round_id", planRound.id);
+  expect((await count(alice.db, "team_plans", "team_id", team.id)) === 0, "and taking it back hides it again");
+  await coach.db.from("team_rounds").delete().eq("id", planRound.id);
+
   console.log("\nTracking for a round");
   const { data: round } = await coach.db
     .from("team_rounds")

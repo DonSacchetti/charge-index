@@ -4,11 +4,13 @@ import { notFound } from "next/navigation";
 
 import { Card, CoachShell } from "@/components/CoachShell";
 import { InviteLink, NewTeamForm } from "@/components/coach/CompanyForms";
+import { TeamPlanView } from "@/components/team/TeamPlanView";
 import { TeamRoster } from "@/components/team/TeamRoster";
-import { inviteUrl, loadTeamProgress } from "@/lib/teams";
+import type { TeamPlan } from "@/lib/team-plan";
+import { computeTeamPlan, inviteUrl, loadTeamProgress } from "@/lib/teams";
 import { requireCoach } from "@/lib/viewer";
 
-import { setSeats, startRound } from "../actions";
+import { releaseTeamPlan, setSeats, startRound, withdrawTeamPlan } from "../actions";
 
 /** One company: its teams, their links, seats and rounds. */
 export default async function CompanyPage({ params }: PageProps<"/coach/companies/[companyId]">) {
@@ -28,6 +30,16 @@ export default async function CompanyPage({ params }: PageProps<"/coach/companie
 
   // Jen sees the same roster the lead does — she also has the full client
   // view of each member elsewhere, which the lead never gets.
+  const { data: released } = await supabase.from("team_plans").select("round_id, team_id, released_at, plan");
+  // A live preview while a round is running; once released, the stored plan —
+  // which is what the lead actually has, and mustn't drift from it.
+  const previews = new Map(
+    await Promise.all(
+      (rounds ?? [])
+        .filter((r) => r.status === "tracking")
+        .map(async (r) => [r.id, await computeTeamPlan(supabase, r.id)] as const),
+    ),
+  );
   const rosters = new Map(
     await Promise.all(
       (teams ?? []).map(async (t) => [t.id, await loadTeamProgress(supabase, t.id)] as const),
@@ -64,6 +76,12 @@ export default async function CompanyPage({ params }: PageProps<"/coach/companie
         const memberInvite = (invites ?? []).find((i) => i.team_id === team.id && i.kind === "member");
         const teamRounds = (rounds ?? []).filter((r) => r.team_id === team.id);
         const current = teamRounds.find((r) => r.status === "tracking");
+        // The round Jen is working with: the live one, else the latest.
+        const shown = current ?? teamRounds[0];
+        const shownPlan = shown
+          ? previews.get(shown.id) ?? ((released ?? []).find((p) => p.round_id === shown.id)?.plan as TeamPlan | undefined)
+          : undefined;
+        const isReleased = Boolean(shown && (released ?? []).some((p) => p.round_id === shown.id));
 
         return (
           <Card key={team.id} className="mb-5" accent="spectrum">
@@ -179,6 +197,41 @@ export default async function CompanyPage({ params }: PageProps<"/coach/companie
                     </li>
                   ))}
                 </ul>
+              ) : null}
+
+              {/* The plan Jen releases by hand — a live preview while the
+                  round runs, the stored plan once it's out (2026-09-29). */}
+              {shown && shownPlan ? (
+                <div className="mt-5 rounded-2xl border border-line p-4">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="m-0 font-serif text-[18px] font-semibold text-navy">
+                      Round {shown.number} plan
+                      {isReleased ? (
+                        <span className="ml-2 text-[11px] font-bold text-level-100 uppercase">released</span>
+                      ) : (
+                        <span className="ml-2 text-[11px] font-bold text-muted uppercase">not released</span>
+                      )}
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      <form action={releaseTeamPlan.bind(null, companyId, team.id, shown.id)}>
+                        <button
+                          type="submit"
+                          className="inline-flex min-h-10 items-center rounded-xl bg-navy px-4 text-[12.5px] font-extrabold text-white transition hover:bg-navy-light"
+                        >
+                          {isReleased ? "Rebuild from the latest data" : "Release to the lead"}
+                        </button>
+                      </form>
+                      {isReleased ? (
+                        <form action={withdrawTeamPlan.bind(null, companyId, shown.id)}>
+                          <button type="submit" className="inline-flex min-h-10 items-center px-2 text-[12px] font-bold text-muted underline hover:text-navy">
+                            Take it back
+                          </button>
+                        </form>
+                      ) : null}
+                    </div>
+                  </div>
+                  <TeamPlanView plan={shownPlan} preview={!isReleased} />
+                </div>
               ) : null}
             </div>
           </Card>

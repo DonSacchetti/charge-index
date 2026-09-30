@@ -4,8 +4,9 @@ import { redirect } from "next/navigation";
 
 import { PageBody, PageHero, SectionLabel, Surface } from "@/components/AppShell";
 import { InviteLink } from "@/components/coach/CompanyForms";
+import { TeamPlanView } from "@/components/team/TeamPlanView";
 import { TeamRoster } from "@/components/team/TeamRoster";
-import { loadMyTeam, loadTeamProgress, inviteUrl } from "@/lib/teams";
+import { loadMyTeam, loadReleasedPlan, loadTeamProgress, inviteUrl } from "@/lib/teams";
 import { requireViewer } from "@/lib/viewer";
 
 /**
@@ -43,6 +44,8 @@ export default async function TeamPage() {
   const logged = session?.daily_entries?.[0]?.count ?? 0;
   // Progress only, and only for the lead — team_progress() enforces that too.
   const roster = isLead ? await loadTeamProgress(supabase, team.id) : [];
+  // Only the lead, and only once Jen has released it.
+  const released = isLead ? await loadReleasedPlan(supabase, team.id) : null;
 
   return (
     <>
@@ -52,7 +55,9 @@ export default async function TeamPage() {
         lead={
           currentRound
             ? "Your team is tracking together. Log your own week exactly as you would on your own — what you log stays yours."
-            : "Nothing to track yet. Jen starts a round when your team is ready, and it'll appear here."
+            : released
+              ? "Your round is finished and Jen has sent your team's plan through. It's below."
+              : "Nothing to track yet. Jen starts a round when your team is ready, and it'll appear here."
         }
       />
 
@@ -94,12 +99,42 @@ export default async function TeamPage() {
                     </Link>
                   </>
                 )
+              ) : released ? (
+                <p className="m-0 text-[14px] leading-[1.6] text-body">
+                  Round {released.roundNumber} is finished. Your team&rsquo;s plan is below; Jen starts another round when
+                  you&rsquo;re ready to measure again.
+                </p>
               ) : (
                 <p className="m-0 text-[14px] leading-[1.6] text-body">
                   Your team hasn&rsquo;t started a round yet. Nothing to do until it does.
                 </p>
               )}
             </Surface>
+
+            {released ? (
+              <Surface className="p-6 sm:p-8" accent="gold" delay={100}>
+                <SectionLabel>
+                  Your team&rsquo;s plan{released.roundNumber ? ` · round ${released.roundNumber}` : ""}
+                </SectionLabel>
+                <h2 className="mb-1 font-serif text-[26px] font-semibold text-navy">When your team works best</h2>
+                <p className="mb-5 text-[13.5px] leading-[1.6] text-body">
+                  Built by Jen from everyone&rsquo;s week. It describes the team, never a person.
+                </p>
+                <TeamPlanView plan={released.plan} />
+                {released.plan.meet.length || released.plan.protect.length ? (
+                  <a
+                    href="/team/plan.ics"
+                    className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-2xl bg-gold px-5 text-[13.5px] font-extrabold text-navy-deep transition hover:-translate-y-0.5 hover:bg-gold-bright"
+                  >
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>
+                      <rect x="4" y="5" width="16" height="15" rx="2" />
+                      <path d="M8 3v4M16 3v4M4 10h16" />
+                    </svg>
+                    Put these blocks in my calendar
+                  </a>
+                ) : null}
+              </Surface>
+            ) : null}
 
             {isLead ? (
               <Surface className="p-6 sm:p-8" delay={120}>
