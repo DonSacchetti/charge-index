@@ -183,6 +183,8 @@ where id = (select id from auth.users where email = '<jen''s email>');
 
 
 
+Next.js was patched **16.3.5 → 16.3.8 on 2026-10-06** for a *critical* advisory: remote code execution in `next/og`'s `ImageResponse` (GHSA-vcvr-r3jv-pc5j, affecting 16.2.0–16.3.5). The app doesn't use `next/og` — no `ImageResponse`, no `opengraph-image` or `icon` route — so there was no reachable path in production, but it was patched the day it was found rather than reasoned around. All 168 unit tests, types, lint, build and the 153 access checks pass on 16.3.8. `npm audit --omit=dev` is now **clean**; the 5 remaining high advisories are all in the lint toolchain (`braces` → `micromatch` → `fast-glob` → `eslint-config-next`), reachable only by feeding hostile glob patterns to ESLint, and npm's only offered "fix" is a downgrade to `eslint-config-next@14`. Left alone deliberately.
+
 Next.js was patched 16.3.1 → 16.3.5 on 2026-09-14 for two critical unauthenticated RCE advisories published after scaffolding (GHSA-2xp9-vwfh-vxw4 in the image optimizer's AVIF handling; GHSA-p293-qw3h-jr36 on Windows hosts), plus sharp and js-yaml advisories. Production wasn't exposed to the image one — no `remotePatterns`, so the optimizer rejects remote URLs (confirmed 400 live), no AVIF in `public/`, no `next/image` — and the Windows one doesn't apply on Vercel. Production has run 16.3.5 since the 2026-09-14 deploy (checked with `window.next.version` on the live site). Run `npm audit` at the start of each session; it was clean in August and not in September.
 
 ## Supabase free tier pauses the project
