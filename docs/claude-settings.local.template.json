@@ -1,0 +1,6 @@
+{
+  "//": "Copy to .claude/settings.local.json and paste your token. That file is gitignored — this repository is public, so the token must never be committed. Create the token at Supabase → Account → Access Tokens.",
+  "env": {
+    "SUPABASE_ACCESS_TOKEN": "sbp_paste-your-supabase-access-token-here"
+  }
+}
