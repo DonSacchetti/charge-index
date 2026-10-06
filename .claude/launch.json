@@ -3,6 +3,12 @@
   "configurations": [
     {
       "name": "charge-index",
+      "runtimeExecutable": "./scripts/dev-local.sh",
+      "runtimeArgs": [],
+      "port": 3200
+    },
+    {
+      "name": "charge-index-live-data",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3000

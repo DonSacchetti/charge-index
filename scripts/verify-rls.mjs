@@ -14,6 +14,8 @@
  */
 import { createClient } from "@supabase/supabase-js";
 
+import { signInAs } from "./lib/sign-in.mjs";
+
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -70,8 +72,7 @@ async function makeUser(tag, role = "client") {
     await admin.from("profiles").update({ role }).eq("id", data.user.id);
   }
   const client = createClient(URL, ANON, { auth: { persistSession: false } });
-  const { error: signInError } = await client.auth.signInWithPassword({ email, password });
-  if (signInError) throw new Error(`signIn ${tag}: ${signInError.message}`);
+  await signInAs(admin, client, email);
   return { id: data.user.id, email, db: client };
 }
 

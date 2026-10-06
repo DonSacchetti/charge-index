@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { signUp } from "@/app/auth/actions";
+import { Turnstile } from "@/components/auth/Turnstile";
 import {
   FieldLabel,
   FormError,
@@ -63,6 +64,8 @@ export function SignupForm({ next }: { next?: string | null }) {
         />
         <p className="mt-[5px] text-[11px] text-muted">At least 8 characters.</p>
       </div>
+
+      <Turnstile />
 
       <div className="mt-3">
         <Submit />

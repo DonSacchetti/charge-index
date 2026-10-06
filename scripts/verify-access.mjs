@@ -19,6 +19,8 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { unzipSync } from "fflate";
 
+import { signInAs } from "./lib/sign-in.mjs";
+
 const BASE = (process.argv[2] || "http://localhost:3000").replace(/\/$/, "");
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -70,8 +72,7 @@ async function makeUser(tag, role = "client") {
       setAll: (list) => list.forEach(({ name, value }) => (value ? jar.set(name, value) : jar.delete(name))),
     },
   });
-  const { error: signInError } = await ssr.auth.signInWithPassword({ email, password });
-  if (signInError) throw new Error(`signIn ${tag}: ${signInError.message}`);
+  await signInAs(admin, ssr, email);
   const cookie = [...jar].map(([n, v]) => `${n}=${v}`).join("; ");
   return { id: data.user.id, email, cookie };
 }

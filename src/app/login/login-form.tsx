@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { signIn } from "@/app/auth/actions";
+import { Turnstile } from "@/components/auth/Turnstile";
 import {
   FieldLabel,
   FormError,
@@ -49,6 +50,8 @@ export function LoginForm({ next, notice }: { next?: string; notice?: string }) 
           className={inputClass}
         />
       </div>
+
+      <Turnstile />
 
       <div className="mt-3">
         <Submit />

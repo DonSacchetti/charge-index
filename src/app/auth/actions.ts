@@ -8,6 +8,23 @@ import { createClient } from "@/lib/supabase/server";
 
 export type AuthState = { error: string } | null;
 
+/**
+ * Cloudflare Turnstile's token, when the bot check is switched on. Supabase
+ * verifies it against the secret in its own auth settings; if the project has
+ * no CAPTCHA configured it ignores whatever is sent, so passing it always is
+ * safe (Josh, 2026-10-06).
+ */
+function captcha(formData: FormData): { captchaToken?: string } {
+  const token = String(formData.get("captcha_token") ?? "");
+  return token ? { captchaToken: token } : {};
+}
+
+/** Supabase's wording for a missing or stale token isn't much use to a person. */
+function authMessage(message: string): string {
+  if (/captcha/i.test(message)) return "The bot check didn't go through. Tick it again, or refresh the page.";
+  return message;
+}
+
 function safeNext(next: FormDataEntryValue | null): string {
   // Only ever redirect to a path on this app — never to an absolute URL
   // supplied through the query string.
@@ -40,10 +57,11 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
       // Read by the handle_new_user trigger to populate profiles.full_name.
       data: { full_name: fullName },
       emailRedirectTo: `${origin}/auth/confirm?next=${encodeURIComponent(next)}`,
+      ...captcha(formData),
     },
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: authMessage(error.message) };
 
   // Session is null when email confirmation is required — send them to a
   // "check your inbox" state rather than into the app.
@@ -59,9 +77,9 @@ export async function signIn(_prev: AuthState, formData: FormData): Promise<Auth
   const next = safeNext(formData.get("next"));
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { error } = await supabase.auth.signInWithPassword({ email, password, options: captcha(formData) });
 
-  if (error) return { error: error.message };
+  if (error) return { error: authMessage(error.message) };
 
   revalidatePath("/", "layout");
   redirect(next);
