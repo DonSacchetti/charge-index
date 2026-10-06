@@ -6,11 +6,15 @@
  * single transaction, so the migration and its history row land together or
  * not at all. Skips a version that's already recorded.
  *
- *   node --env-file=../.env.local scripts/apply-migration.mjs supabase/migrations/<version>_<name>.sql
+ *   node --env-file=.env.local scripts/apply-migration.mjs supabase/migrations/<version>_<name>.sql
  *
- * Needs SUPABASE_ACCESS_TOKEN and SUPABASE_PROJECT_REF (the control-plane
- * credentials in ../.env.local). Uses the Management API's SQL endpoint,
- * which works where the Supabase MCP connection hasn't.
+ * Needs SUPABASE_ACCESS_TOKEN and SUPABASE_PROJECT_REF in .env.local (see
+ * docs/env.local.template). Uses the Management API's SQL endpoint, which
+ * works where the Supabase MCP connection hasn't.
+ *
+ * During the build these lived one level up, outside the repo, which is why
+ * older notes say `--env-file=../.env.local`. A fresh clone has no parent
+ * folder to read, so they belong in the repo's own .env.local now.
  */
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
@@ -24,7 +28,7 @@ if (!match) {
 const [, version, name] = match;
 const { SUPABASE_ACCESS_TOKEN: token, SUPABASE_PROJECT_REF: ref } = process.env;
 if (!token || !ref) {
-  console.error("Missing SUPABASE_ACCESS_TOKEN / SUPABASE_PROJECT_REF — run with --env-file=../.env.local");
+  console.error("Missing SUPABASE_ACCESS_TOKEN / SUPABASE_PROJECT_REF — run with --env-file=.env.local (see docs/env.local.template)");
   process.exit(2);
 }
 

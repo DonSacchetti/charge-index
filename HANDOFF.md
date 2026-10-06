@@ -84,15 +84,19 @@ The service role key deserves a note: it bypasses every access rule in the datab
 
 This is what lets you keep changing the app without a developer.
 
-1. Install Claude Code and sign in with your own account: **https://code.claude.com/docs**
-2. Open this project folder in it.
+Full step-by-step for a fresh laptop, including what to install and in what
+order, is in **`docs/new-machine-setup.md`**. In short:
+
+1. Install Node, Git, Docker Desktop, and Claude Code — signed in as you.
+2. `git clone` the repository, then `npm install`.
 3. Copy the two template files into place:
    ```bash
    cp docs/env.local.template .env.local
    cp docs/claude-settings.local.template.json .claude/settings.local.json
    ```
    Then fill in the values each file describes. Both are gitignored and must never be committed.
-4. Paste the starting prompt from **`docs/first-session-prompt.md`** as your first message.
+4. Run `./scripts/verify-local.sh` once. 153 checks against a throwaway copy of the database — if it ends with "All checks passed", the machine is set up correctly.
+5. Paste the starting prompt from **`docs/first-session-prompt.md`** as your first message.
 
 Claude reads `CLAUDE.md` automatically every time you open this folder, so every session starts knowing how the app is built and why. `docs/first-session-prompt.md` is only needed once.
 
