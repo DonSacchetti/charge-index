@@ -43,7 +43,27 @@ Right now the app lives at `charge-index.vercel.app`. To serve it from your own 
 
 Step 3 is the one people forget. Skip it and sign-up confirmation emails keep pointing at the old address, so new clients click a link that doesn't sign them in.
 
-**Your website and the app are two different things.** Squarespace can't host this app — it doesn't run application code or connect to a database. The arrangement that works: your Squarespace site stays exactly as it is and links out to the app on your own subdomain. Visitors see one brand; underneath, the marketing site and the app stay separate, which is also what lets you redesign one without breaking the other.
+**Your website and the app are two different things.** Three separate pieces get
+called "the domain", and keeping them apart makes everything else make sense:
+
+- **The domain name** — `soenenstrategies.com`. You own it, registered through Wix.
+- **DNS** — the directory saying which address points where. Also at Wix, because
+  that's where your nameservers point.
+- **Hosting** — what actually runs. Two different ones: `www` is your Wix website,
+  `app` is this application on Vercel.
+
+Adding `app.soenenstrategies.com` is one CNAME record in Wix's DNS panel. It's a
+signpost, not a move — nothing is copied to Wix, and your website at `www` is
+completely untouched.
+
+**⚠️ If you ever move your website to Squarespace (or anywhere else):** moving a
+site usually means moving the nameservers, and **the `app` record will not come
+with them**. The app's custom address would quietly stop working — the app itself
+keeps running, but `app.soenenstrategies.com` stops resolving. Recreate the same
+CNAME at the new DNS host and it comes straight back. Worth telling whoever does
+the migration, before they do it.
+
+ Neither Wix nor Squarespace can host this app — website builders serve finished pages, and this one runs code: it signs people in and keeps them signed in, reads and writes a database with per-person access rules, generates calendar files and exports on demand, and runs a scheduled job. The arrangement that works: your site stays exactly where it is and links out to the app on your own subdomain. Visitors see one brand; underneath, the marketing site and the app stay separate, which is also what lets you redesign one without breaking the other.
 
 ## 3. Switch on the bot check **(together)**
 
