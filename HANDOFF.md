@@ -84,16 +84,47 @@ the migration, before they do it.
 
  Neither Wix nor Squarespace can host this app — website builders serve finished pages, and this one runs code: it signs people in and keeps them signed in, reads and writes a database with per-person access rules, generates calendar files and exports on demand, and runs a scheduled job. The arrangement that works: your site stays exactly where it is and links out to the app on your own subdomain. Visitors see one brand; underneath, the marketing site and the app stay separate, which is also what lets you redesign one without breaking the other.
 
-## 3. Switch on the bot check **(together)**
+## 3. Switch on the bot check — **done 2026-10-07**
 
-The app has Cloudflare Turnstile built in — the "confirm you're human" box — but it's dormant until two keys exist. It stops bots creating junk accounts, which otherwise fill your client list and burn through your sign-up email allowance.
+Cloudflare Turnstile — the "confirm you're human" box — is **live on signup and
+login**. It stops bots creating junk accounts, which would otherwise fill your
+client list and burn through your sign-up email allowance.
 
-1. **Cloudflare** → Turnstile → add a widget for your domain. It gives you a **site key** and a **secret key**.
-2. The **site key** goes in **Vercel** → the project → Settings → Environment Variables, named `NEXT_PUBLIC_TURNSTILE_SITE_KEY`.
-3. The **secret key** goes in **Supabase** → Authentication → Attack Protection → enable CAPTCHA, provider **Turnstile**, and paste it there.
-4. Redeploy in Vercel, then load the signup page and check the box appears.
+What is where, so you can find it again:
 
-**Set both or neither.** A secret in Supabase with no site key in Vercel locks everyone out of signup *and* login, including you. A site key with no secret shows the box but nothing checks it.
+1. **Cloudflare** (free account, your own identity) → Turnstile → one widget.
+   Its **Hostnames** list holds `app.soenenstrategies.com` and
+   `charge-index.vercel.app`. **Turnstile only runs on hostnames in that list** —
+   if the app ever answers on a new address, add it here or the box fails there.
+2. **Vercel** → Settings → Environment Variables →
+   `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, set on **Production only**. The site key is
+   public — it is visible in the page source by design.
+3. **Supabase** → Authentication → Attack Protection → CAPTCHA enabled, provider
+   **Turnstile**, secret key pasted there. **That is the only place the secret
+   belongs.**
+
+Verified on the day: the signup page served the widget container and the hidden
+`captcha_token` field, the box rendered in a browser, and a real sign-in through
+it succeeded.
+
+**If you ever change these keys, the order matters.** Site key into Vercel →
+redeploy → confirm the box appears → *then* the secret into Supabase. A secret
+in Supabase with no working site key locks everyone out of signup **and** login,
+including you. A site key with no secret shows the box but checks nothing.
+
+**Your undo button:** turn CAPTCHA off in Supabase → Attack Protection. Sign-in
+works again immediately.
+
+**Two things that are normal and will look alarming:**
+
+- **A new site key does nothing until you redeploy.** Values starting
+  `NEXT_PUBLIC_` are baked into the pages when the app is built, so an existing
+  deployment never picks one up.
+- **You cannot sign in on a Vercel preview deployment any more.** Previews get
+  one-off addresses that aren't in the Turnstile hostname list, and the site key
+  isn't set for them, so they can't produce the token Supabase now demands. This
+  doesn't affect the real site. If you ever need a preview login, add that
+  preview's hostname to the Turnstile widget.
 
 The box appears on **login as well as signup**, on purpose: once Supabase has a CAPTCHA enabled it requires one on every sign-in, so it has to be on both.
 
