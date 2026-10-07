@@ -213,16 +213,25 @@ A member is **flagged** to the lead when they log the same level for five hours 
 
 The released plan is **stored** at the moment you release it, not recalculated on the fly. So a plan a company has been given can't quietly shift underneath them if someone logs more hours afterwards. "Rebuild from the latest data" replaces it on purpose; "Take it back" removes the lead's access immediately.
 
-## 10. Clear out the build's test data **(together, last)**
+## 10. Clear out the build's test data — **mostly done 2026-10-07**
 
 These exist only because of the build and shouldn't be in your records. Josh's account goes **last**, because several steps above need an admin who isn't you in case something goes wrong.
 
-| What | Why it's there |
-|---|---|
-| `qa-...@example.com` (Quinn Tester) | A QA account, with **two Peak Plan purchases that were never paid for** |
-| `demo-lead@`, `demo-member1@`, `demo-member2@example.com` | The seeded corporate team Josh used to walk you through the flow |
-| Company **"Test Company 1"** and its teams | The same walkthrough |
-| `sacchettijosh@gmail.com` (Joshua Sacchetti) | Josh's build account — admin access, 2 sessions and **1 unpaid Peak Plan purchase** |
+| What | Why it's there | State |
+|---|---|---|
+| `qa-...@example.com` (Quinn Tester) | A QA account, with **two Peak Plan purchases that were never paid for** | ✅ **deleted 2026-10-07** |
+| `demo-lead@`, `demo-member1@`, `demo-member2@example.com` | The seeded corporate team Josh used to walk you through the flow | ✅ **deleted 2026-10-07** |
+| Company **"Test Company 1"** and its teams | The same walkthrough | ⬜ still there — two teams, two rounds, now with no members |
+| `sacchettijosh@gmail.com` (Joshua Sacchetti) | Josh's build account — admin access, 2 sessions and **1 unpaid Peak Plan purchase** | ⬜ **kept on purpose, until last** |
+
+After the 2026-10-07 clear-out the database holds **two accounts — yours and Josh's** — 8 sessions and no orphaned rows.
+
+**Deleting an account is one step.** Remove the user and everything of theirs
+follows: their profile, sessions, logged hours, notes, purchases and team
+memberships all cascade. Verified afterwards that nothing was left stranded.
+Two cases would refuse to delete: a coach who has granted someone an extra
+Charge Index, and a team round that still has sessions attached. Neither
+applies today.
 
 If you ever see a client you don't recognise — anything named "ZZ TEST", or an `@example.com` address — tell your developer. It shouldn't happen: the verification scripts refuse to run against your live database (see below), which is exactly why that rule exists.
 
