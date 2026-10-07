@@ -95,6 +95,34 @@ into the same migration as item 2 rather than doing it on its own.
 
 ---
 
+## 5. Patch the `sharp` image library
+
+A high-severity advisory (`GHSA-wq5f-xc86-pv6w`, via librsvg) appeared on
+2026-10-06 against the version pinned here. `npm audit fix` resolves it.
+
+**It is not reachable in this app**, checked rather than assumed: the attack
+needs the image optimiser to process a hostile image, and nothing invokes it —
+no `next/image` anywhere, no `ImageResponse`, no remote image patterns, and the
+app accepts no file uploads. `sharp` arrives as an optional sub-dependency of
+Next.js and simply sits there.
+
+So: patch on the next normal pass, not as an emergency.
+
+---
+
+## Done — kept for the record
+
+- **Security headers** (added 2026-10-07). The app previously sent none, so it
+  could be framed invisibly on someone else's page and a signed-in client
+  tricked into clicking their own log. `next.config.ts` now sends
+  `X-Frame-Options`, `Referrer-Policy`, `X-Content-Type-Options` and
+  `Permissions-Policy` on every route, verified live. **A Content-Security-Policy
+  is still not set** — it needs care around Next.js's inline bootstrap,
+  Turnstile's iframe and Google Fonts, and a careless one breaks the app
+  quietly. Worth doing as its own task.
+
+---
+
 ## Where these came from
 
 Items 1–4 are from Supabase's own security linter, run against the live project
