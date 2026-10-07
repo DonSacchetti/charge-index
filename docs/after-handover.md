@@ -10,20 +10,40 @@ for) are **not** here — those live in `HANDOFF.md` section 12.
 
 ---
 
-## 1. Turn on leaked-password protection
+## 1. Turn on leaked-password protection — **blocked: needs a paid Supabase plan**
 
-**Where:** Supabase → Authentication → password security settings.
+**Where:** Supabase → Authentication → Providers → Email, in the password
+settings (not Attack Protection, where the bot check lives).
 
 Supabase can check a new password against public lists of passwords exposed in
-other companies' data breaches, and refuse it. It's free and it's a single
-toggle. It's currently off.
+other companies' breaches, and refuse it. Worth having, because the people
+signing up are coaching clients entering real personal data, and the commonest
+way an account gets broken into is a password the person already reused from a
+site that was breached.
 
-Worth doing because the people signing up are coaching clients entering real
-personal data, and the most common way an account gets broken into is a password
-the person already used somewhere that was breached.
+**It is a Pro-plan feature.** This organisation is on `free` (checked
+2026-10-07), so the toggle is visible but locked. Nothing to do here until the
+plan question below is settled — then it really is one click.
 
-**Effort:** one click. **Risk:** none — it only affects passwords chosen from
-that point on.
+**This is one of several things the free plan withholds**, and they're better
+weighed together than one at a time:
+
+- **Leaked-password protection** — this item.
+- **The project pauses after about a week of no activity**, which breaks
+  sign-ins while the site still loads normally. A scheduled job
+  (`.github/workflows/supabase-keepalive.yml`) exists purely to work around
+  this. On a paid plan the job becomes unnecessary.
+- **Sign-up emails are rate-limited to a few an hour**, and the confirmation
+  email's wording can't be changed while using Supabase's default sender —
+  which is why a new client currently has to open their confirmation link in
+  the same browser they signed up in.
+
+**Recommendation: move to a paid plan before taking real money from clients.**
+The pausing behaviour is the strongest argument — it fails silently, so the
+first sign you'd get is a client saying they can't log in. Not urgent while the
+app has no paying users; squarely a to-do before launch. Vercel's plan has a
+similar question attached (see `HANDOFF.md` section 5 on Hobby being described
+as non-commercial), so the two are worth deciding together.
 
 ---
 
