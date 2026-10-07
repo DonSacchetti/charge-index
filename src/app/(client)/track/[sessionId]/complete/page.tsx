@@ -2,13 +2,13 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { PageBody, PageHero, SectionLabel, Surface } from "@/components/AppShell";
+import { BookingLink } from "@/components/brand/BookingLink";
 import { loadSessionAnalysis } from "@/lib/session-data";
 import { formatHour } from "@/lib/slots";
 import { canViewPeakPlan, requireViewer } from "@/lib/viewer";
 import { MIN_HOURS_FOR_RESULT, formatHours } from "@/lib/weekly-map";
 
 /** Jen's booking link for the $249 session, as used in her prototype. */
-const BOOK_SESSION_URL = "https://calendly.com/soenenstrategies/introtimestrategycall";
 
 /**
  * End-of-session results, built to mockups 07–10, then reworked after Jen's
@@ -206,14 +206,12 @@ export default async function CompletePage({
               <p className="mt-3 text-[14px] leading-[1.7] text-body">
                 90 minutes with Jen. Everything the automated plan cannot see — your goals, your team&rsquo;s calendar, your season — decided together.
               </p>
-              <a
-                href={BOOK_SESSION_URL}
-                target="_blank"
-                rel="noopener noreferrer"
+              <BookingLink
+                kind="session"
                 className="mt-6 inline-flex min-h-12 items-center rounded-2xl border-[1.5px] border-navy px-6 text-[14.5px] font-extrabold text-navy transition hover:bg-navy hover:text-white"
               >
                 Book the session
-              </a>
+              </BookingLink>
             </Surface>
           </div>
         </div>

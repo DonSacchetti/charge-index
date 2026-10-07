@@ -2,11 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { ChargeMeter } from "@/components/brand/ChargeMeter";
-import { BOOK_CALL_URL, SiteFooter, SiteHeader } from "@/components/brand/SiteHeader";
+import { BookingLink } from "@/components/brand/BookingLink";
+import { SiteFooter, SiteHeader } from "@/components/brand/SiteHeader";
 import { SCALE } from "@/lib/charge";
 import { createClient } from "@/lib/supabase/server";
 
-const BOOK_SESSION_URL = "https://calendly.com/soenenstrategies/introtimestrategycall";
 
 /* Copy below is Jen's, from Design/Prototypes/Charge Index Landing.dc.html. */
 
@@ -76,7 +76,7 @@ const TIERS = [
     desc: "One-to-one. Everything your numbers cannot see, decided together.",
     items: ["We read your Charge Index together", "Your detailed Peak Plan, built around your goals and commitments", "Your protected windows and weekly power list", "Tools and scripts for holding the boundary"],
     cta: "Book your session",
-    href: BOOK_SESSION_URL,
+    booking: "session" as const,
     featured: false,
   },
   {
@@ -86,7 +86,7 @@ const TIERS = [
     desc: "For when you want the habit to hold, not just the plan to exist.",
     items: ["Weekly power-focused sessions", "Unlimited text support between sessions", "Ongoing optimization as your season changes", "Accountability that keeps the plan alive"],
     cta: "Book a call with Jen",
-    href: BOOK_CALL_URL,
+    booking: "call" as const,
     featured: false,
   },
 ];
@@ -141,14 +141,9 @@ export default async function Home() {
               >
                 Start the Charge Index
               </Link>
-              <a
-                href={BOOK_CALL_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex min-h-13 items-center rounded-2xl border-[1.5px] border-white/30 px-6 text-[14.5px] font-extrabold text-white transition hover:bg-white/10"
-              >
+              <BookingLink className="inline-flex min-h-13 items-center rounded-2xl border-[1.5px] border-white/30 px-6 text-[14.5px] font-extrabold text-white transition hover:bg-white/10">
                 Book a call
-              </a>
+              </BookingLink>
             </div>
             <p className="animate-rise mt-5 text-[12.5px] text-white/50 [animation-delay:360ms]">
               Five to seven days of tracking · one tap an hour · no cost
@@ -244,21 +239,16 @@ export default async function Home() {
           <p className="text-[11px] font-extrabold tracking-[0.2em] text-gold-bright uppercase">The charge scale</p>
           <h2 className="mt-4 font-serif text-[36px] leading-[1.12] font-semibold sm:text-[44px]">Five levels. One tap an hour.</h2>
           <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-5">
-            {SCALE.map((s, i) => (
+            {SCALE.map((s) => (
               <div
                 key={s.value}
                 className="card-lift relative flex min-h-[240px] flex-col overflow-hidden rounded-3xl p-5"
                 style={{ background: `linear-gradient(160deg, ${s.color}, rgba(11,21,51,0.2))` }}
               >
-                <div
-                  className="absolute inset-x-4 bottom-4 origin-bottom rounded-2xl bg-white/12"
-                  style={{ height: `${Math.max(12, s.value) * 0.55}%`, animation: `charge-rise 1s cubic-bezier(.2,.8,.2,1) ${i * 90}ms both` }}
-                  aria-hidden
-                />
-                <div className="relative font-serif text-[40px] leading-none font-semibold">{s.label}</div>
-                <div className="relative mt-2 text-[14px] font-extrabold">{s.short}</div>
-                <div className="relative mt-1 text-[11px] font-extrabold tracking-[0.14em] text-white/70 uppercase">{s.state}</div>
-                <p className="relative mt-auto pt-4 text-[13px] leading-[1.5] text-white/85">{s.desc}</p>
+                <div className="font-serif text-[40px] leading-none font-semibold">{s.label}</div>
+                <div className="mt-2 text-[14px] font-extrabold">{s.short}</div>
+                <div className="mt-1 text-[11px] font-extrabold tracking-[0.14em] text-white/70 uppercase">{s.state}</div>
+                <p className="mt-auto pt-4 text-[13px] leading-[1.5] text-white/85">{s.desc}</p>
               </div>
             ))}
           </div>
@@ -355,15 +345,20 @@ export default async function Home() {
                     </li>
                   ))}
                 </ul>
-                <a
-                  href={t.href}
-                  {...(external(t.href) ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                  className={`mt-auto inline-flex min-h-12 items-center justify-center rounded-2xl px-5 text-[14px] font-extrabold transition ${
+                {(() => {
+                  const cls = `mt-auto inline-flex min-h-12 items-center justify-center rounded-2xl px-5 text-[14px] font-extrabold transition ${
                     t.featured ? "bg-gold text-navy-deep hover:bg-gold-bright" : "border-[1.5px] border-navy text-navy hover:bg-navy hover:text-white"
-                  }`}
-                >
-                  {t.cta}
-                </a>
+                  }`;
+                  return t.booking ? (
+                    <BookingLink kind={t.booking} className={cls}>
+                      {t.cta}
+                    </BookingLink>
+                  ) : (
+                    <a href={t.href} {...(external(t.href) ? { target: "_blank", rel: "noopener noreferrer" } : {})} className={cls}>
+                      {t.cta}
+                    </a>
+                  );
+                })()}
               </div>
             ))}
           </div>
@@ -382,9 +377,9 @@ export default async function Home() {
             <Link href="/signup" className="inline-flex min-h-13 items-center rounded-2xl bg-gold px-7 text-[15px] font-extrabold text-navy-deep transition hover:-translate-y-0.5 hover:bg-gold-bright">
               Start the Charge Index
             </Link>
-            <a href={BOOK_CALL_URL} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-13 items-center rounded-2xl border-[1.5px] border-white/30 px-6 text-[14.5px] font-extrabold text-white transition hover:bg-white/10">
+            <BookingLink className="inline-flex min-h-13 items-center rounded-2xl border-[1.5px] border-white/30 px-6 text-[14.5px] font-extrabold text-white transition hover:bg-white/10">
               Book a call with Jen
-            </a>
+            </BookingLink>
           </div>
         </div>
       </section>

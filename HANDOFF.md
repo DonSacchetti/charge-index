@@ -183,6 +183,33 @@ Claude reads `CLAUDE.md` automatically every time you open this folder, so every
 
 Until this is done, "Unlock my plan" stays locked and no client can buy a Peak Plan. Corporate seats are already independent of Stripe — you open those by hand (step 9), which is how a company can pay you by invoice today.
 
+## 7b. Switch on your booking links
+
+The "Book a call" and "Book the session" buttons across the site pointed at two
+Calendly links that were dead by 2026-10-07 — Calendly answered them with "This
+Calendly URL is not valid", which reads as a broken business rather than an
+unfinished one. There were eight of them, including the one on the results
+screen, where a client has just finished tracking and is as interested as
+they'll ever be.
+
+They no longer point anywhere until you say so. Right now, clicking one opens a
+short message saying booking isn't open yet and offering your email address, so
+nobody hits a dead end.
+
+To switch them on, in **Vercel → Settings → Environment Variables** (Production):
+
+| Variable | What it's for |
+|---|---|
+| `NEXT_PUBLIC_BOOKING_URL_CALL` | The free intro call — used in the header, footer, landing page and setup screen |
+| `NEXT_PUBLIC_BOOKING_URL_SESSION` | The paid Peak Plan session — used on the pricing card and the client's results screen |
+
+Paste your real links, redeploy, and those buttons become ordinary links that
+open in a new tab. Set one and not the other and that's fine — the other keeps
+explaining itself.
+
+**Check them once a year.** These broke silently, and nothing in the app can
+tell that a booking link has stopped working.
+
 ## 8. Switch on reminders (optional, later)
 
 Reminders are built and deployed but dormant. They need an email provider account (Resend or Postmark), the sender wired in, and the steps at the top of `.github/workflows/reminders.yml`.

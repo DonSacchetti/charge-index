@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { PageBody, PageHero, SectionLabel, Surface } from "@/components/AppShell";
-import { BOOK_CALL_URL } from "@/components/brand/SiteHeader";
+import { BookingLink } from "@/components/brand/BookingLink";
 import { formatDayDate } from "@/lib/days";
 import { buildSessionSlots, formatHour, hourOf } from "@/lib/slots";
 import { createClient } from "@/lib/supabase/server";
@@ -217,14 +217,9 @@ export default async function SetupPage() {
                 test — Jen can reopen it for you.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <a
-                  href={BOOK_CALL_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex min-h-12 items-center rounded-2xl bg-navy px-6 text-[14px] font-extrabold text-white transition hover:-translate-y-0.5"
-                >
+                <BookingLink className="inline-flex min-h-12 items-center rounded-2xl bg-navy px-6 text-[14px] font-extrabold text-white transition hover:-translate-y-0.5">
                   Ask Jen to reopen it
-                </a>
+                </BookingLink>
                 {latest ? (
                   <Link
                     href={latest.status === "completed" ? `/track/${latest.id}/complete` : `/track/${latest.id}`}

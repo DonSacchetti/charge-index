@@ -1,8 +1,7 @@
 import Link from "next/link";
 
+import { BookingLink } from "@/components/brand/BookingLink";
 import { Logo } from "@/components/brand/Logo";
-
-export const BOOK_CALL_URL = "https://calendly.com/d/yry-kfz-7b3/initial-consultation-call";
 
 /** Public header for signed-out pages: landing, sign in, sign up. */
 export function SiteHeader({ tone = "light", sections = false }: { tone?: "light" | "dark"; sections?: boolean }) {
@@ -16,7 +15,7 @@ export function SiteHeader({ tone = "light", sections = false }: { tone?: "light
             <a href="#how" className={`${light ? "text-white/75 hover:text-white" : "text-body hover:text-navy"}`}>How it works</a>
             <a href="#scale" className={`${light ? "text-white/75 hover:text-white" : "text-body hover:text-navy"}`}>The scale</a>
             <a href="#plans" className={`${light ? "text-white/75 hover:text-white" : "text-body hover:text-navy"}`}>Plans</a>
-            <a href={BOOK_CALL_URL} target="_blank" rel="noopener noreferrer" className={`${light ? "text-white/75 hover:text-white" : "text-body hover:text-navy"}`}>Book a call</a>
+            <BookingLink className={`${light ? "text-white/75 hover:text-white" : "text-body hover:text-navy"}`}>Book a call</BookingLink>
           </nav>
         ) : null}
         <div className="ml-auto flex flex-none items-center gap-1 sm:gap-2">
@@ -46,7 +45,7 @@ export function SiteFooter() {
         <span>Soenen Strategies® · Jen Soenen, Time Strategist</span>
         <span className="flex flex-wrap gap-4">
           <a href="mailto:soenenstrategies@gmail.com" className="hover:text-white">soenenstrategies@gmail.com</a>
-          <a href={BOOK_CALL_URL} target="_blank" rel="noopener noreferrer" className="hover:text-white">Book a call</a>
+          <BookingLink className="hover:text-white">Book a call</BookingLink>
         </span>
       </div>
     </footer>
