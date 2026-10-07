@@ -36,7 +36,7 @@ This project runs entirely on accounts registered to Jen, not Josh. Do not use a
 
 ## Current status
 
-Phase 0 (foundations) is live: `https://charge-index.vercel.app`.
+Phase 0 (foundations) is live. **The app's own address is `https://app.soenenstrategies.com` (2026-10-07)** — a `CNAME` named `app` in Wix's DNS panel, since `soenenstrategies.com`'s nameservers point at Wix. `https://charge-index.vercel.app` still serves the same app and is kept in Supabase's Redirect URLs. **If the website ever moves to Squarespace, that `app` record must be recreated at the new DNS host or the app's address stops resolving** — see `HANDOFF.md` section 2.
 
 Phase 1 (auth + data model + RLS) is live and now **fully verified against the real database**: `supabase/migrations/20260818150105_create_initial_schema.sql` — 7 tables, RLS enabled, 15 policies. The `handle_new_user` trigger, which Phase 1 left untested, was confirmed end-to-end on 2026-08-18: a new auth user gets a `profiles` row with `full_name` carried from `raw_user_meta_data` and `role = 'client'`. Also confirmed live, with test users since deleted: a client cannot insert a session under another `client_id` (42501), cannot read another client's session (0 rows), reads 0 rows from `session_analysis` even for their own session, and cannot write the coach-only analysis table (42501). The service role can read/write both coach-only tables, which is the path Phases 6-9 will use.
 

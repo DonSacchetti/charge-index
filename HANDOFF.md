@@ -33,15 +33,33 @@ Josh created these under your email so they were yours from day one, but he know
 
 Stripe and the email provider are different — you create those yourself, later (steps 7 and 8).
 
-## 2. Put the app on your own address **(together)**
+## 2. Put the app on your own address — **done 2026-10-07**
 
-Right now the app lives at `charge-index.vercel.app`. To serve it from your own domain:
+The app is live at **`https://app.soenenstrategies.com`**, with a valid HTTPS
+certificate issued automatically by Vercel. `charge-index.vercel.app` still works
+and still serves the same app, so no existing link is broken.
 
-1. **Vercel** → the project → Domains → add the address you want (e.g. `app.soenenstrategies.com`).
-2. Vercel shows you a DNS record. Create it at whoever you bought the domain from.
-3. **Supabase** → Authentication → URL Configuration → set **Site URL** to the new address and add it to the **Redirect URLs** list.
+What was done, for the record:
+
+1. **Vercel** → project → Domains → `app.soenenstrategies.com` added.
+2. **Wix** → DNS records → a `CNAME` named `app` pointing at the value Vercel's
+   Domains page gives. Vercel now shows a long project-specific target
+   (`…vercel-dns-017.com`) and still accepts the older `cname.vercel-dns.com`;
+   either works. **Read the current value off Vercel's Domains page rather than
+   copying one from here** — Vercel changes it. Two things trip people up in
+   Wix's panel: the host must be just `app` (Wix adds the rest itself), and the
+   trailing dot Vercel displays has to be removed.
+3. **Supabase** → Authentication → URL Configuration → Site URL set to
+   `https://app.soenenstrategies.com`, and `https://app.soenenstrategies.com/**`
+   added to Redirect URLs. The `charge-index.vercel.app` entry was deliberately
+   kept, so anyone who signed up from the old address can still confirm.
 
 Step 3 is the one people forget. Skip it and sign-up confirmation emails keep pointing at the old address, so new clients click a link that doesn't sign them in.
+
+**A domain bought by mistake:** `appsoenenstrategies.com` (no dot) was registered
+at Squarespace during this work and is being cancelled. It is not used by
+anything. If a renewal notice for it ever appears, that's why — it should not be
+renewed.
 
 **Your website and the app are two different things.** Three separate pieces get
 called "the domain", and keeping them apart makes everything else make sense:
@@ -56,9 +74,10 @@ Adding `app.soenenstrategies.com` is one CNAME record in Wix's DNS panel. It's a
 signpost, not a move — nothing is copied to Wix, and your website at `www` is
 completely untouched.
 
-**⚠️ If you ever move your website to Squarespace (or anywhere else):** moving a
-site usually means moving the nameservers, and **the `app` record will not come
-with them**. The app's custom address would quietly stop working — the app itself
+**⚠️ If you ever move your website to Squarespace (or anywhere else):** this is
+now a live risk, not a hypothetical one — the `app` record exists at Wix and the
+app depends on it. Moving a site usually means moving the nameservers, and
+**the `app` record will not come with them**. The app's custom address would quietly stop working — the app itself
 keeps running, but `app.soenenstrategies.com` stops resolving. Recreate the same
 CNAME at the new DNS host and it comes straight back. Worth telling whoever does
 the migration, before they do it.
