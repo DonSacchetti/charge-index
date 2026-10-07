@@ -94,9 +94,13 @@ The service role key deserves a note: it bypasses every access rule in the datab
 
 ## 5. Take ownership of the code **(together)**
 
-1. Transfer the GitHub repository `DonSacchetti/charge-index` to your own GitHub account.
-2. Check the repository's **Actions secrets** survived the move (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `CRON_SECRET` once reminders are on). Re-add any that didn't.
-3. In **Vercel**, connect the project to the repository using **your** GitHub login, so anything pushed deploys automatically.
+**This step is done.** Recorded here so you know what was done and how it was checked.
+
+1. ~~Transfer the GitHub repository to your own GitHub account.~~ **Done.** It now lives at `soenenstrategies-art/charge-index`, under your account, with the whole build history.
+2. ~~Check the repository's **Actions secrets** survived the move.~~ **Done for the two that are in use** — the keep-alive job ran on schedule under your ownership on 2026-10-04 and succeeded, which only works if `SUPABASE_URL` and `SUPABASE_ANON_KEY` are both there. `CRON_SECRET` still has to be added when reminders are switched on (step 8).
+3. ~~In **Vercel**, connect the project to the repository using **your** GitHub login.~~ **Done 2026-10-07.** Pushing to `main` now deploys on its own.
+
+**What that means day to day:** you ask Claude for a change, it pushes to `main`, and Vercel deploys it. There is no token to keep and no deploy command to run. If a deploy ever needs checking, the Vercel dashboard is the place — Claude Code in a cloud session cannot reach Vercel or Supabase over the network, so it can confirm the push but not the deploy.
 
 **About the repository being public.** Vercel's free Hobby plan only deploys commits authored by the account owner — unless the repository is public. That's why it was made public during the build. Once you own it and are the only one committing, you can make it private again. If someone else will keep working on it, it either stays public or you move to Vercel Pro. Vercel's own terms also describe Hobby as non-commercial use, which is worth settling before you charge real money.
 

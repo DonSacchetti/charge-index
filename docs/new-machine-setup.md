@@ -55,8 +55,8 @@ node --version
 git --version
 docker --version
 
-# 2. Get the code. Replace OWNER with whoever owns the repository.
-git clone https://github.com/OWNER/charge-index.git
+# 2. Get the code.
+git clone https://github.com/soenenstrategies-art/charge-index.git
 cd charge-index
 
 # 3. Install the app's dependencies. A few minutes the first time.
