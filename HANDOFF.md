@@ -191,6 +191,10 @@ If you ever see a client you don't recognise — anything named "ZZ TEST", or an
 
 ## 12. Decisions still waiting for you
 
+**Technical odds and ends found during the handover are kept separately, in
+`docs/after-handover.md`** — none of them urgent, none of them broken. This
+section is for the business decisions only.
+
 These are in the build notes rather than here, because they're product questions, not handover steps: what a Peak Plan purchase includes, the reminder times and wording, and whether to move off the free Vercel and Supabase plans before you start charging.
 
 One is worth flagging now: **Supabase's free plan pauses a database after about a week of no activity**, which silently breaks sign-ins while the site still appears to load. A small scheduled job (`.github/workflows/supabase-keepalive.yml`) keeps it awake. Leave it in place unless you upgrade.
